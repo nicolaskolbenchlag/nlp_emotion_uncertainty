@@ -2,3 +2,4 @@ venv/
 .vscode/
 run.sh
 wild/
+*.out

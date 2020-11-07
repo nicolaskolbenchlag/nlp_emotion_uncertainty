@@ -21,6 +21,7 @@ def tokenize(data):
             text = sentence,
             add_special_tokens = True,
             max_length = SEQ_LEN,
+            truncation=True,
             pad_to_max_length = True,
             return_attention_mask = True
         )
@@ -46,6 +47,13 @@ class RegressionModel(torch.nn.Module):
             torch.nn.Linear(50, 1)
         )
 
+        self.prediction_head_2 = torch.nn.Sequential(
+            torch.nn.GRU(input_size=768, hidden_size=50, num_layers=1, batch_first=False, bidirectional=True),# return sequences
+            torch.nn.ReLU(),
+            torch.nn.Dropout(.25),
+            torch.nn.Linear(50, 1)# predict label for each timestep
+        )
+
     def forward(self, input_ids, attention_mask):
         return self.forward_not_recurrent(input_ids, attention_mask)
 
@@ -54,6 +62,11 @@ class RegressionModel(torch.nn.Module):
         last_hidden_state_cls = outputs[0][:, 0, :]
         logits = self.prediction_head(last_hidden_state_cls)
         return logits
+    
+    def forward_recurrent(self, input_ids, attention_mask):
+        outputs = []
+        for i_text_step in None:
+            outputs.append(self.encoder(input_ids=None, attention_mask=None))
 
 # if torch.cuda.is_available():
 if False:      
@@ -84,7 +97,9 @@ if __name__ == "__main__":
 
     directory_label = "wild/label_segments/valence/"
     
-    for filename in os.listdir(directory_data)[:1]:
+    x, y = [], []
+
+    for filename in os.listdir(directory_data)[:2]:
         df_data = pd.read_csv(directory_data + filename, sep="\t")
         
         if filename.split("_")[0] + ".csv" not in os.listdir(directory_label):
@@ -94,7 +109,7 @@ if __name__ == "__main__":
         df_label = pd.read_csv(directory_label + filename.split("_")[0] + ".csv", sep=",")
         df_label.timestamp = df_label.timestamp.apply(lambda ts: datetime.datetime.strptime("{}.{}.{}.{}".format(datetime.datetime.fromtimestamp(ts / 1000).hour - 1, datetime.datetime.fromtimestamp(ts / 1000).minute, datetime.datetime.fromtimestamp(ts / 1000).second, datetime.datetime.fromtimestamp(ts / 1000).microsecond), "%H.%M.%S.%f"))
 
-        x, y = [], []
+        # x, y = [], []
 
         concat_texts = 2
         for i in range(0, len(df_data), concat_texts):
@@ -122,6 +137,9 @@ if __name__ == "__main__":
 
     y = torch.tensor(y)
 
+    print("x.shape:", x.size())
+    print("y.shape:", y.size())
+
     train_data = torch.utils.data.TensorDataset(x[0], x[1], y)
     train_sampler = torch.utils.data.RandomSampler(train_data)
     train_dataloader = torch.utils.data.DataLoader(train_data, sampler=train_sampler, batch_size=32)
@@ -143,6 +161,7 @@ if __name__ == "__main__":
         for step, batch in enumerate(train_dataloader):
             batch_counts +=1
             b_input_ids, b_attn_mask, b_labels = tuple(t.to(device) for t in batch)
+            
             # Zero out any previously calculated gradients
             model.zero_grad()
 
