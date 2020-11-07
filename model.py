@@ -13,7 +13,7 @@ MODEL = "bert-base-uncased"
 SEQ_LEN = 512
 
 tokenizer = transformers.AutoTokenizer.from_pretrained(MODEL, max_length=SEQ_LEN, pad_to_max_length=True, do_lower_case=True)
-
+# https://github.com/allenai/longformer
 def tokenize(data):
     input_ids, attention_mask = [], []
     for sentence in data:
@@ -68,8 +68,7 @@ class RegressionModel(torch.nn.Module):
         for i_text_step in None:
             outputs.append(self.encoder(input_ids=None, attention_mask=None))
 
-# if torch.cuda.is_available():
-if False:      
+if torch.cuda.is_available():
     device = torch.device("cuda")
     print(f"There are {torch.cuda.device_count()} GPU(s) available.")
     print("Device name:", torch.cuda.get_device_name(0))
@@ -123,8 +122,7 @@ if __name__ == "__main__":
             
             labels = df_label.loc[(df_label.timestamp >= time_begin) & (df_label.timestamp <= time_end)].value.values
 
-            if not len(labels) > 0:
-                continue
+            if not len(labels) > 0: continue
 
             label = labels.mean()
 
@@ -137,7 +135,7 @@ if __name__ == "__main__":
 
     y = torch.tensor(y)
 
-    print("x.shape:", x.size())
+    # print("x.shape:", np.asarray(x).shape)
     print("y.shape:", y.size())
 
     train_data = torch.utils.data.TensorDataset(x[0], x[1], y)
@@ -148,7 +146,7 @@ if __name__ == "__main__":
 
     loss_fn = torch.nn.MSELoss()
 
-    set_seed(42)
+    set_seed()
     model, optimizer, scheduler = initialize_model(epochs=epochs)
     for epoch in range(epochs):
         print("Epoch:", epoch + 1)
