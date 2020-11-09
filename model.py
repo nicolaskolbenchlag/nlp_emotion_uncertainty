@@ -98,7 +98,7 @@ if __name__ == "__main__":
     
     x, y = [], []
 
-    for filename in os.listdir(directory_data)[:2]:
+    for filename in os.listdir(directory_data):
         df_data = pd.read_csv(directory_data + filename, sep="\t")
         
         if filename.split("_")[0] + ".csv" not in os.listdir(directory_label):
@@ -110,7 +110,7 @@ if __name__ == "__main__":
 
         # x, y = [], []
 
-        concat_texts = 2
+        concat_texts = 5
         for i in range(0, len(df_data), concat_texts):
             df_data_sub = df_data[i : i + concat_texts]
             
@@ -135,14 +135,13 @@ if __name__ == "__main__":
 
     y = torch.tensor(y)
 
-    # print("x.shape:", np.asarray(x).shape)
     print("y.shape:", y.size())
 
     train_data = torch.utils.data.TensorDataset(x[0], x[1], y)
     train_sampler = torch.utils.data.RandomSampler(train_data)
     train_dataloader = torch.utils.data.DataLoader(train_data, sampler=train_sampler, batch_size=32)
 
-    epochs = 1
+    epochs = 41
 
     loss_fn = torch.nn.MSELoss()
 
