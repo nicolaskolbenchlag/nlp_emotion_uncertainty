@@ -6,8 +6,9 @@ import pandas as pd
 import numpy as np
 import os
 import datetime
-# import sklearn.model_selection
 import matplotlib.pyplot as plt
+import random
+import sklearn.model_selection
 
 # MODEL = "allenai/longformer-base-4096"
 # TOKENIZER = "roberta-base"
@@ -30,10 +31,8 @@ def tokenize(data):
             text = sentence,
             add_special_tokens = True,
 
-            # max_length = SEQ_LEN,# Remove for Longformer
-            padding = "max_length",
+            padding = "max_length",# NOTE: Remove for Longformer
             truncation = True,
-            # pad_to_max_length = True,
             
             return_attention_mask = True,
             return_tensors = "tf"
@@ -42,7 +41,7 @@ def tokenize(data):
         attention_mask.append(encoded.get("attention_mask"))
     return np.array([np.array(input_ids)[:,0,:], np.array(attention_mask)[:,0,:]])
 
-def load_dataset():
+def load_dataset(test_split=.05):
     directory_data = "../../EmCaR/"
     directory_data += "2_data/360p/transcriptions_new/"
     directory_label = "wild/label_segments/valence/"
@@ -85,9 +84,10 @@ def load_dataset():
         y_tmp = [0] + y_tmp + [0]
         y.append(y_tmp)
     
-    x = tokenize(x)
-    y = np.array(y)
-    return x, y
+    x_train, x_test, y_train, y_test = sklearn.model_selection.train_test_split(x, y, test_size=test_split)
+    # x = tokenize(x)
+    # y = np.array(y)
+    return tokenize(x_train), tokenize(x_test), np.array(y_train), np.array(y_test)
 
 def tilted_loss(q, y, f):
     e =  y - f
@@ -109,29 +109,28 @@ def create_model(quantile, freeze_encoder=True):
     model.compile(optimizer="Adam", loss=lambda y, f: tilted_loss(quantile, y, f))
     return model
 
-def plot_prediction(seq_real, seqs_pred):
-    x_axis = range(len(seq_real))
-    plt.plot(x_axis, seq_real, label="Real")
-    for q, seq_pred in seqs_pred.items():
-        plt.plot(x_axis, seq_pred, label="Prediction q={}".format(q))
-    plt.legend()
-    plt.savefig("save.png")
+def plot_prediction(seqs_real, seqs_pred):
+    for i in range(len(seqs_real)):
+        seq_real = seqs_real[i]
+        x_axis = range(len(seq_real))
+        plt.plot(x_axis, seq_real, label="Real")
+        for q, seq_pred in seqs_pred.items():
+            plt.plot(x_axis, seq_pred[i], label="Prediction [q={}]".format(q))
+        plt.legend()
+        plt.savefig("save_{}.png".format(i))
+        plt.clf()
     
 if __name__ == "__main__":
-    x, y = load_dataset()
-    print("x.shape:", x.shape)
-    print("y.shape:", y.shape)
-    assert x.shape[-1] == y.shape[-1], "Sequence lengths of x and y do not match"
-
-    # max_len = max([len(tokens) for tokens in x[0]])
-    # print("Max length (in tokens):", max_len)
+    x_train, x_test, y_train, y_test = load_dataset()
+    print("x_train.shape:", x_train.shape)
+    print("y_train.shape:", y_train.shape)
+    assert x_train.shape[-1] == y_train.shape[-1], "Sequence lengths of x and y do not match"
 
     preds = {}
-    for q in [.1, .5, .9]:
+    for q in [.25, .5, .75]:
         model = create_model(quantile=q)
-        model.fit([x[0],x[1]], y, epochs=15, batch_size=32)
+        model.fit([x_train[0], x_train[1]], y_train, epochs=15, batch_size=32)
 
-        i = 10
-        preds[q] = model.predict([x[0][i:i+1,:], x[1][i:i+1,:]])[0]
+        preds[q] = model.predict([x_test[0], x_test[1]])
 
-    plot_prediction(y[i], preds)
+    plot_prediction(y_test, preds)
