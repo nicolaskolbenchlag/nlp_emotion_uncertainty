@@ -127,9 +127,9 @@ if __name__ == "__main__":
     assert x_train.shape[-1] == y_train.shape[-1], "Sequence lengths of x and y do not match"
 
     preds = {}
-    for q in [.25, .5, .75]:
-        model = create_model(quantile=q)
-        model.fit([x_train[0], x_train[1]], y_train, epochs=15, batch_size=32)
+    for q in [.1, .5, .9]:
+        model = create_model(quantile=q, freeze_encoder=False)
+        model.fit([x_train[0], x_train[1]], y_train, epochs=30, batch_size=32)
 
         preds[q] = model.predict([x_test[0], x_test[1]])
 
