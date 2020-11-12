@@ -2,3 +2,7 @@ venv/
 .vscode/
 run.sh
 wild/
+c1_muse_wild/
+output/
+bert-4/
+MuSe-Wild.zip

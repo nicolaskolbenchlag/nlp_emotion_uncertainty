@@ -1,0 +1,13 @@
+numpy
+pandas
+matplotlib
+torch
+torchvision
+opencv-python
+scikit-learn
+tensorboard
+tqdm
+transformers
+nltk
+resampy
+soundfile

@@ -1,0 +1,17 @@
+model_params = {
+    'vonly': True,
+    'aonly': True,
+    'lonly': True,
+    'conv_dim': 40,
+    'attn_dropout': 0.3,
+    'attn_dropout_a': 0.0,
+    'attn_dropout_v': 0.0,
+    'relu_dropout': 0.1,
+    'embed_dropout': 0.25,
+    'res_dropout': 0.1,
+    'out_dropout': 0.1,
+    'layers': 4,
+    'num_heads': 4,
+    'attn_mask': False,
+    'bidirectional': False,
+}
