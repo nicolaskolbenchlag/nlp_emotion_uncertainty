@@ -1,1 +1,1 @@
-### Experiments on Uncertainty measurement in NLP
+### Experiments on uncertainty measurement in NLP

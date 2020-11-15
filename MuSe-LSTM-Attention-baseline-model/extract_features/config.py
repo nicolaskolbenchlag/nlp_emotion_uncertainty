@@ -18,13 +18,13 @@ import os
 # PATH_TO_RAW_AUDIO = os.path.join(PATH_TO_MUSE_2020, 'raw/audio_norm')
 # PATH_TO_RAW_VIDEO = os.path.join(PATH_TO_MUSE_2020, 'raw/video')
 
-DATA_FOLDER = 'output/data'
+# DATA_FOLDER = "MuSe-LSTM-Attention-baseline-model/output/data"
 
 # numerical
 EPSILON = 1e-6
 
 
-PATH_TO_MUSE_2020 = "../../EmCaR/MuSe-data-base/data/"
+# PATH_TO_MUSE_2020 = "../../EmCaR/MuSe-data-base/data/"
 
 # PATH_TO_ALIGNED_FEATURES = os.path.join(PATH_TO_MUSE_2020, 'muse-wild/feature_segments/label_aligned')
 # PATH_TO_UNALIGNED_FEATURES = os.path.join(PATH_TO_MUSE_2020, 'muse-wild/feature_segments/unaligned')

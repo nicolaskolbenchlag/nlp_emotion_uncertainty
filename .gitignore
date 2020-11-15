@@ -1,8 +1,6 @@
 venv/
 .vscode/
 run.sh
-wild/
 c1_muse_wild/
-output/
-bert-4/
+MuSe-LSTM-Attention-baseline-model/extracted_features/
 MuSe-Wild.zip

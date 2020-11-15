@@ -13,6 +13,8 @@ from dataset import MyDataset
 import utils
 import config
 
+import train
+
 
 # parse parameters
 def parse_params():
@@ -207,7 +209,7 @@ def main(params):
             train_model(model, data_loader, params)
 
         test_ccc, test_pcc, test_rmse = \
-            evaluate(model, data_loader['test'], params)
+            evaluate(model, data_loader['devel'], params)#TODO: fix usage of dataloader['test']
 
         val_losses.append(val_loss)
         val_cccs.append(val_ccc)
@@ -256,8 +258,8 @@ def main(params):
     if params.predict and data_loader_gt is None:
         print('Predict val & test videos...')
         best_model = torch.load(best_model_files[best_idx])
-        predict(best_model, data_loader['devel'], params)
-        predict(best_model, data_loader['test'], params)
+        train.predict_mc_dropout(best_model, data_loader['devel'], params)
+        # predict(best_model, data_loader['test'], params)# TODO: fix test-usage
         print('...done.')
     elif params.predict:  # data_loader_gt is available
         print('Predict train & val & test videos...')

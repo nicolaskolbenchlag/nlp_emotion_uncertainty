@@ -327,7 +327,6 @@ def get_data_partition(partition_file):
         if vid not in partition2vid[
             partition]:  # Note: this is necessary because few items repeat 2 times in partition file.
             partition2vid[partition].append(vid)
-
     return vid2partition, partition2vid
 
 

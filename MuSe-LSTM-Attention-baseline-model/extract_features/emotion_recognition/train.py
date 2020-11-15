@@ -196,3 +196,110 @@ def predict(model, data_loader, params):
 
         partition = data_loader.dataset.partition
         utils.write_model_prediction(full_metas, full_preds, full_labels, params, partition=partition, view=params.view)
+
+
+
+import os
+import config
+import pandas as pd
+from scipy.signal import savgol_filter
+import matplotlib.pyplot as plt
+
+def predict_mc_dropout(model, data_loader, params):
+    # model.eval()
+    n_ensembles = 3
+
+    with torch.no_grad():
+        ensemble_preds, ensemble_metas, ensemble_labels = [], [], []
+        for _ in range(n_ensembles):
+            full_preds, full_metas, full_labels = [], [], []
+            for _, batch_data in enumerate(data_loader, 1):
+                features, feature_lens, labels, metas = batch_data
+                if params.gpu is not None:
+                    model.cuda()
+                    features = features.cuda()
+                    feature_lens = feature_lens.cuda()
+                preds = model(features, feature_lens)
+                full_preds.append(preds.cpu().detach().squeeze(0).numpy())
+                full_metas.append(metas.detach().squeeze(0).numpy())
+                full_labels.append(labels.cpu().detach().squeeze(0).numpy())
+            
+            ensemble_preds.append(full_preds)
+            ensemble_metas.append(full_metas)
+            ensemble_labels.append(full_labels)
+
+        prediction_folder = config.PREDICTION_FOLDER
+        if params.save_dir is not None:
+            prediction_folder = os.path.join(prediction_folder, params.save_dir)
+        if not os.path.exists(prediction_folder):
+            os.makedirs(prediction_folder)
+        folder = f'{os.path.splitext(params.log_file_name)[0]}_[{params.n_seeds}_{params.current_seed}]_mc_dropout'
+        save_dir = os.path.join(prediction_folder, folder)
+        params.preds_path = save_dir
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+        img_dir = os.path.join(save_dir, 'img')
+        if not os.path.exists(img_dir):
+            os.mkdir(img_dir)
+        
+        partition = data_loader.dataset.partition
+
+        for idx, emo_dim in enumerate(params.emo_dim_set):
+            # for i in range(ensemble_preds.shape[1]):
+            for i in range(len(ensemble_preds[0])):
+                meta = ensemble_metas[0][i]
+                label = ensemble_labels[0][i]
+                vid = meta[0, 0]
+                                
+                pred = [p[i][idx] for p in ensemble_preds]
+
+                pred_mean = np.mean(pred, axis=0)
+                pred_var = np.var(pred, axis=0)
+
+                img_emo_dir = os.path.join(img_dir, emo_dim)
+                if not os.path.exists(img_emo_dir):
+                    os.mkdir(img_emo_dir)
+                
+                plot_video_prediction_with_uncertainty(meta[:, 1], pred_mean, pred_var, label, partition, vid, emo_dim, img_emo_dir)
+
+def plot_video_prediction_with_uncertainty(time, pred_mean, pred_var, label_raw, partition, vid, emo_dim, save_dir):
+    # df_pred = df_pred[df_pred['segment_id'] > 0]  # remove padding
+
+    time = time / 1000.0
+
+    time = [i for i in range(len(pred_mean))]
+
+    # label_raw = [item for sublist in label_raw for item in sublist]
+    label_raw = label_raw[:len(time)]
+    # label_target = savgol_filter(label_raw, 11, 3).tolist()
+    label_target = label_raw
+
+    plt.figure(figsize=(20, 10))
+    
+    plt.plot(time, label_target, 'red', label=f'{emo_dim} (target)')
+    
+    plt.plot(time, pred_mean + pred_var, "lightblue")
+    plt.plot(time, pred_mean - pred_var, "lightblue")
+    plt.fill_between(time, pred_mean - pred_var, pred_mean + pred_var, color='lightblue', alpha=.5)
+
+    plt.plot(time, pred_mean, 'blue', label=f'{emo_dim} (pred mean)')
+
+    plt.title(f"{emo_dim} of video '{vid}' [{partition}]")
+    plt.legend()
+    plt.xlabel('Time (s)')
+    plt.ylabel('Value')
+
+    ax = plt.gca()
+    if time[-1] < 400:
+        x_interval = 10
+    elif time[-1] < 800:
+        x_interval = 20
+    else:
+        x_interval = 50
+    x_major_locator = plt.MultipleLocator(x_interval)
+    ax.xaxis.set_major_locator(x_major_locator)
+    plt.ylim([-1, 1])
+    plt.grid()
+
+    plt.savefig(os.path.join(save_dir, f'{vid}.jpg'))
+    plt.close()
