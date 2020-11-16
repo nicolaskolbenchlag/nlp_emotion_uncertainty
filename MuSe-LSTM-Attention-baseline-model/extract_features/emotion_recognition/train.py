@@ -206,7 +206,7 @@ from scipy.signal import savgol_filter
 import matplotlib.pyplot as plt
 
 def predict_mc_dropout(model, data_loader, params):
-    # model.eval()
+    model.train()
     n_ensembles = 3
 
     with torch.no_grad():
@@ -245,29 +245,39 @@ def predict_mc_dropout(model, data_loader, params):
         partition = data_loader.dataset.partition
 
         for idx, emo_dim in enumerate(params.emo_dim_set):
-            # for i in range(ensemble_preds.shape[1]):
             for i in range(len(ensemble_preds[0])):
                 meta = ensemble_metas[0][i]
                 label = ensemble_labels[0][i]
                 vid = meta[0, 0]
-                                
-                pred = [p[i][idx] for p in ensemble_preds]
+
+                pred = [p[i] for p in ensemble_preds]
+
+                pred = np.array(pred)[:,:,idx]
 
                 pred_mean = np.mean(pred, axis=0)
                 pred_var = np.var(pred, axis=0)
+                pred_min = np.min(pred, axis=0)
+                pred_max = np.max(pred, axis=0)
 
                 img_emo_dir = os.path.join(img_dir, emo_dim)
                 if not os.path.exists(img_emo_dir):
                     os.mkdir(img_emo_dir)
-                
-                plot_video_prediction_with_uncertainty(meta[:, 1], pred_mean, pred_var, label, partition, vid, emo_dim, img_emo_dir)
+                    
+                plot_video_prediction_with_uncertainty(meta[:, 1], pred_mean, pred_var, label, partition, vid, emo_dim, img_emo_dir, pred_min, pred_max)
 
-def plot_video_prediction_with_uncertainty(time, pred_mean, pred_var, label_raw, partition, vid, emo_dim, save_dir):
+
+def plot_video_prediction_with_uncertainty(time, pred_mean, pred_var, label_raw, partition, vid, emo_dim, save_dir, pred_min, pred_max):
+
+    n = 100
+    time = time[:n]
+    pred_mean = pred_mean[:n]
+    pred_var = pred_var[:n]
+    pred_min = pred_min[:n]
+    pred_max = pred_max[:n]
+
     # df_pred = df_pred[df_pred['segment_id'] > 0]  # remove padding
 
     time = time / 1000.0
-
-    time = [i for i in range(len(pred_mean))]
 
     # label_raw = [item for sublist in label_raw for item in sublist]
     label_raw = label_raw[:len(time)]
@@ -276,18 +286,15 @@ def plot_video_prediction_with_uncertainty(time, pred_mean, pred_var, label_raw,
 
     plt.figure(figsize=(20, 10))
     
-    plt.plot(time, label_target, 'red', label=f'{emo_dim} (target)')
-    
-    plt.plot(time, pred_mean + pred_var, "lightblue")
-    plt.plot(time, pred_mean - pred_var, "lightblue")
-    plt.fill_between(time, pred_mean - pred_var, pred_mean + pred_var, color='lightblue', alpha=.5)
+    plt.fill_between(time, pred_min, pred_max, color='lightblue', alpha=.5)
 
-    plt.plot(time, pred_mean, 'blue', label=f'{emo_dim} (pred mean)')
+    plt.plot(time, label_target, 'red', label='target')
+    plt.plot(time, pred_mean, 'blue', label=f'prediction')
 
     plt.title(f"{emo_dim} of video '{vid}' [{partition}]")
     plt.legend()
-    plt.xlabel('Time (s)')
-    plt.ylabel('Value')
+    plt.xlabel('time (s)')
+    plt.ylabel(emo_dim)
 
     ax = plt.gca()
     if time[-1] < 400:

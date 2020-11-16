@@ -1,0 +1,16 @@
+/nas/student/NicolasKolbenschlag/emotion_uncertainty/MuSe-LSTM-Attention-baseline-model/extract_features/emotion_recognition/main.py --feature_set bert-4 --emo_dim_set valence --epochs 10 --view --refresh --predict --n_seeds 1 --out_dr 0.5
+Constructing dataset and data loader ...
+Constructing data from scratch ...
+Samples in partitions: (3132, 62, 64)
+Input feature dim: 768.
+==================================================
+Training model... [seed 314]
+Seed 314 | Best [Val CCC]: 0.4033 [' 0.4033']| Loss: 0.6064 | PCC: 0.4145 ['0.4145'] | RMSE: 0.4658 ['0.4658']
+On Test: CCC  0.4033 | PCC  0.4145 | RMSE  0.4658
+==================================================
+On ground-truth labels:	Best	[Val CCC] for seed "314":	 0.4033
+On ground-truth labels:		[Test CCC] for seed "314":	 0.4033
+----------------------------------------------------------------------------------------------------
+Predict val & test videos...
+...done.
+Delete model "MuSe-LSTM-Attention-baseline-model/output/model/2020-11-16-18-36_[bert-4]_[valence]_[NOSEG]_[lstm_64_1_False]_[False_1_4]_[0.005_1024_0.0_0.0_0.5]_None_[1_314_None_None].pth".
