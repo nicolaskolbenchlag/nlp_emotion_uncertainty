@@ -14,4 +14,4 @@ On ground-truth labels:		[Test CCC] for seed "314":	 0.3961
 ----------------------------------------------------------------------------------------------------
 Predict val & test videos...
 ...done.
-Delete model "MuSe-LSTM-Attention-baseline-model/output/model/2020-11-16-19-05_[bert-4]_[valence]_[NOSEG]_[lstm_64_1_False]_[False_1_4]_[0.005_1024_0.0_0.0_0.5]_None_[1_314_None_None].pth".
+Delete model "MuSe-LSTM-Attention-baseline-model/output/model/2020-11-17-01-13_[bert-4]_[valence]_[NOSEG]_[lstm_64_1_False]_[False_1_4]_[0.005_1024_0.0_0.0_0.5]_None_[1_314_None_None].pth".
