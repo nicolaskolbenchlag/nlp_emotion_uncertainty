@@ -18,6 +18,10 @@ def train_model(model, data_loader, params):
         criterion = utils.MSELoss()
     elif params.loss == 'l1':
         criterion = utils.L1Loss()
+    elif params.loss == 'tilted':
+        criterion = utils.TiltedLoss()
+    elif params.loss == 'mae':
+        criterion = utils.MAELoss()
     else:
         raise Exception(f'Not supported loss "{params.loss}".')
     # optimizer
@@ -126,7 +130,6 @@ def train(model, train_loader, criterion, optimizer, epoch, params):
     train_loss = total_loss / total_size
     return train_loss
 
-
 def validate(model, val_loader, criterion, params):
     model.eval()
     full_preds, full_labels = [], []
@@ -204,6 +207,135 @@ import config
 import pandas as pd
 from scipy.signal import savgol_filter
 import matplotlib.pyplot as plt
+
+def evaluate_quantile_regression(model, test_loader, params):
+    model.eval()
+    full_preds, full_labels = [], []
+    with torch.no_grad():
+        for batch, batch_data in enumerate(test_loader, 1):
+            features, feature_lens, labels, meta = batch_data
+            if params.gpu is not None:
+                model.cuda()
+                features = features.cuda()
+                feature_lens = feature_lens.cuda()
+                labels = labels.cuda()
+            preds = model(features, feature_lens)[:, 1]# use .5 quantile for prediction
+            full_preds.append(preds.cpu().detach().squeeze(0).numpy())
+            full_labels.append(labels.cpu().detach().squeeze(0).numpy())
+
+        test_ccc, test_pcc, test_rmse = utils.eval(full_preds, full_labels)
+    return test_ccc, test_pcc, test_rmse
+
+def predict_quantile_regression(model, data_loader, params):
+    with torch.no_grad():
+
+        full_preds, full_metas, full_labels = [], [], []
+        for _, batch_data in enumerate(data_loader, 1):
+            features, feature_lens, labels, metas = batch_data
+            if params.gpu is not None:
+                model.cuda()
+                features = features.cuda()
+                feature_lens = feature_lens.cuda()
+            preds = model(features, feature_lens)
+            full_preds.append(preds.cpu().detach().squeeze(0).numpy())
+            full_metas.append(metas.detach().squeeze(0).numpy())
+            full_labels.append(labels.cpu().detach().squeeze(0).numpy())
+
+        prediction_folder = config.PREDICTION_FOLDER
+        if params.save_dir is not None:
+            prediction_folder = os.path.join(prediction_folder, params.save_dir)
+        if not os.path.exists(prediction_folder):
+            os.makedirs(prediction_folder)
+        folder = f'{os.path.splitext(params.log_file_name)[0]}_[{params.n_seeds}_{params.current_seed}]_mc_dropout'
+        save_dir = os.path.join(prediction_folder, folder)
+        params.preds_path = save_dir
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+        img_dir = os.path.join(save_dir, 'img')
+        if not os.path.exists(img_dir):
+            os.mkdir(img_dir)
+        
+        partition = data_loader.dataset.partition
+
+        for idx, emo_dim in enumerate(params.emo_dim_set):
+            for i in range(len(full_preds)):
+                meta = full_metas[i]
+                label = full_labels[i]
+                vid = meta[0, 0]
+
+                pred = full_preds[i]
+
+                pred_q0 = pred[:, 0]
+                pred_q1 = pred[:, 1]
+                pred_q2 = pred[:, 2]
+
+                img_emo_dir = os.path.join(img_dir, emo_dim)
+                if not os.path.exists(img_emo_dir):
+                    os.mkdir(img_emo_dir)
+                    
+                plot_video_prediction_with_quantiles(meta[:, 1], pred_q0, pred_q1, pred_q2, label, partition, vid, emo_dim, img_emo_dir)
+
+def plot_video_prediction_with_quantiles(time, pred_q0, pred_q1, pred_q2, label_raw, partition, vid, emo_dim, save_dir):
+
+    n = 100
+    time = time[:n]
+
+    # df_pred = df_pred[df_pred['segment_id'] > 0]  # remove padding
+
+    time = time / 1000.0
+
+    # label_raw = [item for sublist in label_raw for item in sublist]
+    label_raw = label_raw[:len(time)]
+    # label_target = savgol_filter(label_raw, 11, 3).tolist()
+    label_target = label_raw
+
+    plt.figure(figsize=(20, 10))
+    
+    # plt.fill_between(time, pred_min, pred_max, color='lightblue', alpha=.5)
+    plt.fill_between(time, pred_q0, pred_q2, color='lightblue', alpha=.5)
+
+    plt.plot(time, label_target, 'red', label='target')
+    plt.plot(time, pred_q1, 'blue', label=f'prediction')
+
+    plt.title(f"{emo_dim} of video '{vid}' [{partition}]")
+    plt.legend()
+    plt.xlabel('time (s)')
+    plt.ylabel(emo_dim)
+
+    ax = plt.gca()
+    if time[-1] < 400:
+        x_interval = 10
+    elif time[-1] < 800:
+        x_interval = 20
+    else:
+        x_interval = 50
+    x_major_locator = plt.MultipleLocator(x_interval)
+    ax.xaxis.set_major_locator(x_major_locator)
+    plt.ylim([-1, 1])
+    plt.grid()
+
+    plt.savefig(os.path.join(save_dir, f'{vid}.jpg'))
+    plt.close()
+
+def evaluate_mc_dropout(model, test_loader, params):
+    n_ensembles = 3
+    model.train()
+    full_preds, full_labels = [], []
+    with torch.no_grad():
+        for batch, batch_data in enumerate(test_loader, 1):
+            features, feature_lens, labels, meta = batch_data
+            if params.gpu is not None:
+                model.cuda()
+                features = features.cuda()
+                feature_lens = feature_lens.cuda()
+                labels = labels.cuda()
+            preds = [model(features, feature_lens).cpu().detach().squeeze(0).numpy() for i in range(n_ensembles)]
+            preds = np.mean(preds, axis=0)# TODO check
+            full_preds.append(preds)
+            full_labels.append(labels.cpu().detach().squeeze(0).numpy())
+
+        test_ccc, test_pcc, test_rmse = utils.eval(full_preds, full_labels)
+    return test_ccc, test_pcc, test_rmse
 
 def predict_mc_dropout(model, data_loader, params):
     model.train()
@@ -286,6 +418,7 @@ def plot_video_prediction_with_uncertainty(time, pred_mean, pred_var, label_raw,
 
     plt.figure(figsize=(20, 10))
     
+    # plt.fill_between(time, pred_min, pred_max, color='lightblue', alpha=.5)
     plt.fill_between(time, pred_min, pred_max, color='lightblue', alpha=.5)
 
     plt.plot(time, label_target, 'red', label='target')

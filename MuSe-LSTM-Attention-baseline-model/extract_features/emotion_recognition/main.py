@@ -7,7 +7,7 @@ from dateutil import tz
 import numpy as np
 import torch
 
-from train import train_model, evaluate, predict
+from train import train_model, evaluate, predict, evaluate_mc_dropout
 from model import Model
 from dataset import MyDataset
 import utils
@@ -59,7 +59,7 @@ def parse_params():
                         help='dimension of output layer (default: 64)')
     parser.add_argument('--out_biases', type=float, nargs='+',
                         help='biases of output layer')
-    parser.add_argument('--loss', type=str, default='ccc', choices=['ccc', 'mse', 'l1'],
+    parser.add_argument('--loss', type=str, default='ccc', choices=['ccc', 'mse', 'l1', "tilted", "tilted_dyn"],
                         help='loss function (default: ccc)')
     parser.add_argument('--loss_weights', nargs='+', type=float,
                         help='loss weights for total loss calculation')
@@ -207,9 +207,17 @@ def main(params):
         print('Training model... [seed {}]'.format(params.current_seed))
         val_loss, val_ccc, val_pcc, val_rmse, best_model_file = \
             train_model(model, data_loader, params)
-
+        
+        ########################################
+        # test_ccc, test_pcc, test_rmse = \
+        #     evaluate(model, data_loader['devel'], params)
+        
         test_ccc, test_pcc, test_rmse = \
-            evaluate(model, data_loader['devel'], params)#TODO: fix usage of dataloader['test']
+            train.evaluate_quantile_regression(model, data_loader['devel'], params)
+        
+        # test_ccc, test_pcc, test_rmse = \
+        #     train.evaluate_mc_dropout(model, data_loader['devel'], params)
+        ########################################
 
         val_losses.append(val_loss)
         val_cccs.append(val_ccc)
@@ -258,8 +266,13 @@ def main(params):
     if params.predict and data_loader_gt is None:
         print('Predict val & test videos...')
         best_model = torch.load(best_model_files[best_idx])
-        train.predict_mc_dropout(best_model, data_loader['devel'], params)
-        # predict(best_model, data_loader['test'], params)# TODO: fix test-usage
+        
+        ########################################
+        # train.predict_mc_dropout(best_model, data_loader['devel'], params)
+        train.predict_quantile_regression(best_model, data_loader['devel'], params)
+        # predict(best_model, data_loader['devel'], params)# TODO: fix test-usage
+        ########################################
+        
         print('...done.')
     elif params.predict:  # data_loader_gt is available
         print('Predict train & val & test videos...')

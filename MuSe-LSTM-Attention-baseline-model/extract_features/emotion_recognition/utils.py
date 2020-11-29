@@ -367,6 +367,32 @@ def get_padding_mask(x, x_lens):
     mask = mask.bool()
     return mask
 
+class TiltedLoss(nn.Module):
+    def __init__(self):
+        super(TiltedLoss, self).__init__()
+    
+    def forward(self, y_pred, y_true, seq_lens=None, label_smooth=None):
+
+        quantiles = [.1, .5, .9]
+        losses = []
+        for i, q in enumerate(quantiles):
+            errors = y_true - y_pred[:, i]
+            losses.append(torch.max((q - 1) * errors, q * errors).unsqueeze(1))
+        loss = torch.mean(torch.sum(torch.cat(losses, dim=1), dim=1))
+        return loss
+
+class MAELoss(nn.Module):
+    def __init__(self):
+        super(MAELoss, self).__init__()
+
+    def forward(self, y_pred, y_true, seq_lens=None, label_smooth=None):
+        """
+        :param y_pred: (batch_size, seq_len)
+        :param y_true: (batch_size, seq_len)
+        :return:
+        """
+        loss = torch.mean(torch.abs(y_pred - y_true , dim=1))
+        return loss
 
 class CCCLoss(nn.Module):
     def __init__(self):
