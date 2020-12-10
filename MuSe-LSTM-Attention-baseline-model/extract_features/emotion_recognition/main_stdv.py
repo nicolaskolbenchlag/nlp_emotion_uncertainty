@@ -7,9 +7,9 @@ from dateutil import tz
 import numpy as np
 import torch
 
-from train import train_model, evaluate, predict, evaluate_mc_dropout
+from train import train_model, predict, evaluate_mc_dropout
 from model import Model
-from dataset import MyDataset
+from dataset import MyDatasetStdv
 import utils
 import config
 
@@ -59,7 +59,7 @@ def parse_params():
                         help='dimension of output layer (default: 64)')
     parser.add_argument('--out_biases', type=float, nargs='+',
                         help='biases of output layer')
-    parser.add_argument('--loss', type=str, default='ccc', choices=['ccc', 'mse', 'l1', "tilted", "tilted_dyn", "tiltedCCC"],
+    parser.add_argument('--loss', type=str, default='ccc', choices=['ccc', 'mse', 'l1', "tilted", "tilted_dyn", "tiltedCCC", "cccStd"],
                         help='loss function (default: ccc)')
     parser.add_argument('--loss_weights', nargs='+', type=float,
                         help='loss weights for total loss calculation')
@@ -131,18 +131,35 @@ def parse_params():
     args = parser.parse_args()
     return args
 
+def evaluate(model, test_loader, params):
+    model.eval()
+    full_preds, full_labels = [], []
+    with torch.no_grad():
+        for batch, batch_data in enumerate(test_loader, 1):
+            features, feature_lens, labels, meta, stdvs = batch_data
+            if params.gpu is not None:
+                model.cuda()
+                features = features.cuda()
+                feature_lens = feature_lens.cuda()
+                labels = labels.cuda()
+            preds = model(features, feature_lens)
+            full_preds.append(preds.cpu().detach().squeeze(0).numpy())
+            full_labels.append(labels.cpu().detach().squeeze(0).numpy())
 
-def get_dataloaders(data, predict=False):
+        test_ccc, test_pcc, test_rmse = utils.eval(full_preds, full_labels)
+    return test_ccc, test_pcc, test_rmse
+
+def get_dataloaders(data, stdvs, predict=False):
     sample_counts = []
     data_loader = {}
     for partition in data.keys():
-        set_ = MyDataset(data, partition)
+        set_ = MyDatasetStdv(data, partition, stdvs)
         sample_counts.append(len(set_))
 
         batch_size = params.batch_size if partition == 'train' and not predict else 1
         shuffle = True if partition == 'train' else False
-        data_loader[partition] = torch.utils.data.DataLoader(set_, batch_size=batch_size, shuffle=shuffle,
-                                                             num_workers=4)
+        data_loader[partition] = torch.utils.data.DataLoader(set_, batch_size=batch_size, shuffle=shuffle, num_workers=4)
+        
     print(f'Samples in partitions: {*sample_counts,}')
     return data_loader
 
@@ -150,19 +167,47 @@ def get_dataloaders(data, predict=False):
 def main(params):
     # load data
     print('Constructing dataset and data loader ...')
+    
+    ###############################################################################################
+    # NOTE: calculate standard deviation among annotators
+    all_annotations = {}
+    for annotator in [2, 4, 7, 5, 8]:#range(1, 16)
+        data = utils.load_data(params, params.feature_set, params.emo_dim_set, params.normalize, params.label_preproc, params.norm_opts, params.segment_type, params.win_len, params.hop_len, save=params.cache, refresh=params.refresh, add_seg_id=params.add_seg_id, annotator=annotator)
+        
+        for partition in ["devel", "test", "train"]:
+            metas = data[partition]["meta"]
+            labels = data[partition]["label"]
+            
+            labels = [[ts[0] for ts in sample] for sample in labels]# NOTE: gets first predicted emo_dim / only works with 1
 
-    data = utils.load_data(params, params.feature_set, params.emo_dim_set, params.normalize, params.label_preproc,
-                           params.norm_opts, params.segment_type, params.win_len, params.hop_len, save=params.cache,
-                           refresh=params.refresh, add_seg_id=params.add_seg_id, annotator=params.annotator)
-    data_loader = get_dataloaders(data)
-    if params.annotator is not None:
-        data_gt = utils.load_data(params, params.feature_set, params.emo_dim_set, params.normalize, params.label_preproc,
-                                  params.norm_opts, 'None', params.win_len, params.hop_len, save=params.cache,
-                                  refresh=params.refresh, add_seg_id=params.add_seg_id, annotator=None)
-        data_loader_gt = get_dataloaders(data_gt, True)
-        print('-' * 50)
-    else:
-        data_loader_gt = None
+            for i, meta in enumerate(metas):
+
+                vid_id = meta[0][0]
+                timestamps = meta[1]
+                seqgment_ids = meta[2]
+                
+                label = labels[i]
+
+                if vid_id not in all_annotations.keys():
+                    all_annotations[vid_id] = [[] for _ in range(len(label))]# NOTE: list for each timestep
+                
+                for ts, label_at_ts in enumerate(label):
+                    all_annotations[vid_id][ts].append(label_at_ts)
+    
+
+    stdvs = {}# NOTE: video_id : [stdv_ts_1, stdv_ts_2, stdv_ts_3, ..., stdv_ts_n]
+    for vid_id, labels in all_annotations.items():
+        stdvs[vid_id] = torch.tensor([np.abs(np.std(ts)) for ts in labels]).float()
+    
+
+    min_ = min([min(sample) for sample in stdvs.values()])
+    stdvs = {vid_id: values - min_ for vid_id, values in stdvs.items()}
+    max_ = max([max(sample) for sample in stdvs.values()])
+    stdvs = {vid_id: values / max_ for vid_id, values in stdvs.items()}
+
+    data = utils.load_data(params, params.feature_set, params.emo_dim_set, params.normalize, params.label_preproc, params.norm_opts, params.segment_type, params.win_len, params.hop_len, save=params.cache, refresh=params.refresh, add_seg_id=params.add_seg_id, annotator=None)
+    data_loader = get_dataloaders(data, stdvs)
+    ###############################################################################################
 
     # check params
     if params.out_biases is None:
@@ -209,11 +254,11 @@ def main(params):
             train_model(model, data_loader, params)
         
         ########################################
-        # test_ccc, test_pcc, test_rmse = \
-        #     evaluate(model, data_loader['devel'], params)
-        
         test_ccc, test_pcc, test_rmse = \
-            train.evaluate_quantile_regression(model, data_loader['devel'], params)
+            evaluate(model, data_loader['devel'], params)
+        
+        # test_ccc, test_pcc, test_rmse = \
+            # train.evaluate_quantile_regression(model, data_loader['devel'], params)
         
         # test_ccc, test_pcc, test_rmse = \
         #     train.evaluate_mc_dropout(model, data_loader['devel'], params)

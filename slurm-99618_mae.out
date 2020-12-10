@@ -1,0 +1,62 @@
+/nas/student/NicolasKolbenschlag/emotion_uncertainty/MuSe-LSTM-Attention-baseline-model/extract_features/emotion_recognition/main.py --feature_set bert-4 --emo_dim_set valence --epochs 100 --refresh --predict --n_seeds 10 --attn --rnn_bi --loss l1
+Constructing dataset and data loader ...
+Constructing data from scratch ...
+Samples in partitions: (3132, 62, 64)
+Input feature dim: 768.
+==================================================
+Training model... [seed 314]
+Note: target can not be optimized for 15 consecutive epochs, early stop the training process!
+Seed 314 | Best [Val CCC]: 0.3496 [' 0.3496']| Loss: 0.3152 | PCC: 0.3875 ['0.3875'] | RMSE: 0.3963 ['0.3963']
+On Test: CCC  0.3255 | PCC  0.3979 | RMSE  0.3898
+==================================================
+Training model... [seed 315]
+Note: target can not be optimized for 15 consecutive epochs, early stop the training process!
+Seed 315 | Best [Val CCC]: 0.0380 [' 0.0380']| Loss: 0.3252 | PCC: 0.1791 ['0.1791'] | RMSE: 0.4059 ['0.4059']
+On Test: CCC  0.0356 | PCC  0.1878 | RMSE  0.4043
+==================================================
+Training model... [seed 316]
+Note: target can not be optimized for 15 consecutive epochs, early stop the training process!
+Seed 316 | Best [Val CCC]: 0.3724 [' 0.3724']| Loss: 0.3205 | PCC: 0.3973 ['0.3973'] | RMSE: 0.3966 ['0.3966']
+On Test: CCC  0.3301 | PCC  0.3921 | RMSE  0.3910
+==================================================
+Training model... [seed 317]
+Note: target can not be optimized for 15 consecutive epochs, early stop the training process!
+Seed 317 | Best [Val CCC]: 0.3330 [' 0.3330']| Loss: 0.3432 | PCC: 0.3756 ['0.3756'] | RMSE: 0.4203 ['0.4203']
+On Test: CCC  0.2892 | PCC  0.3233 | RMSE  0.4088
+==================================================
+Training model... [seed 318]
+Note: target can not be optimized for 15 consecutive epochs, early stop the training process!
+Seed 318 | Best [Val CCC]: 0.0931 [' 0.0931']| Loss: 0.3205 | PCC: 0.2108 ['0.2108'] | RMSE: 0.4011 ['0.4011']
+On Test: CCC  0.0748 | PCC  0.1750 | RMSE  0.4037
+==================================================
+Training model... [seed 319]
+Note: target can not be optimized for 15 consecutive epochs, early stop the training process!
+Seed 319 | Best [Val CCC]: 0.3562 [' 0.3562']| Loss: 0.3110 | PCC: 0.4016 ['0.4016'] | RMSE: 0.3841 ['0.3841']
+On Test: CCC  0.3200 | PCC  0.3577 | RMSE  0.4017
+==================================================
+Training model... [seed 320]
+Note: target can not be optimized for 15 consecutive epochs, early stop the training process!
+Seed 320 | Best [Val CCC]: 0.3187 [' 0.3187']| Loss: 0.3165 | PCC: 0.3617 ['0.3617'] | RMSE: 0.3943 ['0.3943']
+On Test: CCC  0.2511 | PCC  0.3327 | RMSE  0.3925
+==================================================
+Training model... [seed 321]
+Seed 321 | Best [Val CCC]: 0.2762 [' 0.2762']| Loss: 0.3197 | PCC: 0.3284 ['0.3284'] | RMSE: 0.3958 ['0.3958']
+On Test: CCC  0.2655 | PCC  0.3185 | RMSE  0.4006
+==================================================
+Training model... [seed 322]
+Note: target can not be optimized for 15 consecutive epochs, early stop the training process!
+Seed 322 | Best [Val CCC]: 0.3639 [' 0.3639']| Loss: 0.3092 | PCC: 0.4023 ['0.4023'] | RMSE: 0.3903 ['0.3903']
+On Test: CCC  0.2908 | PCC  0.3907 | RMSE  0.3919
+==================================================
+Training model... [seed 323]
+Note: target can not be optimized for 15 consecutive epochs, early stop the training process!
+Seed 323 | Best [Val CCC]: 0.3333 [' 0.3333']| Loss: 0.3196 | PCC: 0.3612 ['0.3612'] | RMSE: 0.4007 ['0.4007']
+On Test: CCC  0.3241 | PCC  0.3731 | RMSE  0.4027
+==================================================
+On ground-truth labels:	Best	[Val CCC] for seed "316":	 0.3724
+On ground-truth labels:		[Test CCC] for seed "316":	 0.3301
+----------------------------------------------------------------------------------------------------
+Predict val & test videos...
+...done.
+Delete model "MuSe-LSTM-Attention-baseline-model/output/model/2020-12-05-06-11_[bert-4]_[valence]_[NOSEG]_[lstm_64_1_True]_[True_1_4]_[0.005_1024_0.0_0.0_0.0]_None_[10_316_None_None].pth".
+slurmstepd: Exceeded step memory limit at some point.

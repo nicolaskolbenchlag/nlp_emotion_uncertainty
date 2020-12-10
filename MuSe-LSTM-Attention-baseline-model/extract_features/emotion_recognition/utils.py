@@ -77,6 +77,7 @@ def load_data(params, feature_set, emo_dim_set,
     for partition, vids in partition2vid.items():
         if annotator is not None:
             vids = [vid for vid in anno2vid[annotator] if vid in vids]
+        
         for vid in vids:
             # concat
             sample_concat_data = []  # feature1, feature2, ..., emo dim1, emo dim2. (ex, 'au', 'vggface', 'arousal', 'valence')
@@ -371,27 +372,165 @@ class TiltedLoss(nn.Module):
     def __init__(self):
         super(TiltedLoss, self).__init__()
     
-    def forward(self, y_pred, y_true, seq_lens=None, label_smooth=None):
+    def forward_1(self, y_pred, y_true, seq_lens=None, label_smooth=None):# old impl. (https://www.kaggle.com/carlossouza/quantile-regression-pytorch-tabular-data-only)
+        # make padding mask
+        if seq_lens is not None:
+            mask = torch.ones_like(y_true, device=y_true.device)
+            for i, seq_len in enumerate(seq_lens):
+                mask[i, seq_len:] = 0
+        else:
+            mask = torch.ones_like(y_true, device=y_true.device)
+
+        quantiles = [.1, .5, .9]
+        losses = []
+        
+        # print("y_true:", y_true.numpy().shape)
+        # print("y_pred:", y_pred.detach().numpy().shape)
+        
+        for i, q in enumerate(quantiles):
+            errors = (y_true - y_pred[:, :, i]) * mask
+            losses.append(torch.max((q - 1) * errors, q * errors).unsqueeze(1))
+        
+        loss = torch.mean(torch.sum(torch.cat(losses, dim=1), dim=1))
+        return loss
+    
+    def forward(self, y_pred, y_true, seq_lens=None, label_smooth=None):# new impl. (Han / model_utilities_for_tilted_loss.py)
+        # make padding mask
+        if seq_lens is not None:
+            mask = torch.ones_like(y_true, device=y_true.device)
+            for i, seq_len in enumerate(seq_lens):
+                mask[i, seq_len:] = 0
+        else:
+            mask = torch.ones_like(y_true, device=y_true.device)
 
         quantiles = [.1, .5, .9]
         losses = []
         for i, q in enumerate(quantiles):
-            errors = y_true - y_pred[:, i]
-            losses.append(torch.max((q - 1) * errors, q * errors).unsqueeze(1))
-        loss = torch.mean(torch.sum(torch.cat(losses, dim=1), dim=1))
+            errors = (y_true - y_pred[:, :, i]) * mask
+            losses.append(torch.max((q - 1) * errors, q * errors).unsqueeze(1).mean(dim=-1))
+        
+        # print("losses.shape:", np.array(losses).shape)
+        loss = torch.mean(torch.cat(losses))
+        # print("loss:", loss)
         return loss
+    
+    def forward_3(self, y_pred, y_true, seq_lens=None, label_smooth=None):# https://www.kaggle.com/ulrich07/quantile-regression-with-keras
+        # make padding mask
+        if seq_lens is not None:
+            mask = torch.ones_like(y_true, device=y_true.device)
+            for i, seq_len in enumerate(seq_lens):
+                mask[i, seq_len:] = 0
+        else:
+            mask = torch.ones_like(y_true, device=y_true.device)
+        # smooth label by average pooling
+        if label_smooth is not None:
+            y_true = torch.nn.functional.avg_pool1d(y_true.unsqueeze(1), kernel_size=label_smooth,
+                                                    stride=1, padding=(label_smooth - 1) // 2,
+                                                    count_include_pad=False)
+            y_true = y_true.squeeze(1)
 
-class MAELoss(nn.Module):
+        y_true = y_true.unsqueeze(-1)
+        quantiles = [.1, .5, .9]
+        q = torch.tensor(quantiles)
+        e = (y_true - y_pred) * mask
+        v = torch.max(q * e, (q - 1) * e)
+        return v.mean()
+
+class CCCLossWithStd(nn.Module):
     def __init__(self):
-        super(MAELoss, self).__init__()
+        super(CCCLossWithStd, self).__init__()
+
+    def forward(self, y_pred, y_true, stdvs, seq_lens=None, label_smooth=None):
+        """
+        :param y_pred: (batch_size, seq_len)
+        :param y_true: (batch_size, seq_len)
+        :param seq_lens: (batch_size,)
+        :return:
+        """
+        # make padding mask
+        if seq_lens is not None:
+            mask = torch.ones_like(y_true, device=y_true.device)
+            for i, seq_len in enumerate(seq_lens):
+                mask[i, seq_len:] = 0
+        else:
+            mask = torch.ones_like(y_true, device=y_true.device)
+        # smooth label by average pooling
+        if label_smooth is not None:
+            y_true = torch.nn.functional.avg_pool1d(y_true.unsqueeze(1), kernel_size=label_smooth,
+                                                    stride=1, padding=(label_smooth - 1) // 2,
+                                                    count_include_pad=False)
+            y_true = y_true.squeeze(1)
+
+        y_true_mean = torch.sum(y_true * mask, dim=1, keepdim=True) / torch.sum(mask, dim=1, keepdim=True)
+        y_pred_mean = torch.sum(y_pred * mask, dim=1, keepdim=True) / torch.sum(mask, dim=1, keepdim=True)
+        # biased variance
+        y_true_var = torch.sum(mask * (y_true - y_true_mean) ** 2, dim=1, keepdim=True) / torch.sum(mask, dim=1,
+                                                                                                    keepdim=True)
+        y_pred_var = torch.sum(mask * (y_pred - y_pred_mean) ** 2, dim=1, keepdim=True) / torch.sum(mask, dim=1,
+                                                                                                    keepdim=True)
+
+        cov = torch.sum(mask * (y_true - y_true_mean) * (y_pred - y_pred_mean), dim=1, keepdim=True) / torch.sum(mask,
+                                                                                                                 dim=1,
+                                                                                                                 keepdim=True)
+
+        ccc = torch.mean(2.0 * cov / (y_true_var + y_pred_var + (y_true_mean - y_pred_mean) ** 2), dim=0)  # (1,*)
+        ccc = ccc.squeeze(0)  # (*,) if necessary
+        ccc_loss = 1.0 - ccc
+
+        print(stdvs)
+        ccc_loss = ccc_loss * torch.mean(stdvs)
+
+        return ccc_loss
+
+class TiltedCCCLoss(nn.Module):
+    def __init__(self):
+        super(TiltedCCCLoss, self).__init__()
 
     def forward(self, y_pred, y_true, seq_lens=None, label_smooth=None):
         """
         :param y_pred: (batch_size, seq_len)
         :param y_true: (batch_size, seq_len)
+        :param seq_lens: (batch_size,)
         :return:
         """
-        loss = torch.mean(torch.abs(y_pred - y_true , dim=1))
+        # make padding mask
+        if seq_lens is not None:
+            mask = torch.ones_like(y_true, device=y_true.device)
+            for i, seq_len in enumerate(seq_lens):
+                mask[i, seq_len:] = 0
+        else:
+            mask = torch.ones_like(y_true, device=y_true.device)
+        # smooth label by average pooling
+        if label_smooth is not None:
+            y_true = torch.nn.functional.avg_pool1d(y_true.unsqueeze(1), kernel_size=label_smooth,
+                                                    stride=1, padding=(label_smooth - 1) // 2,
+                                                    count_include_pad=False)
+            y_true = y_true.squeeze(1)
+        
+        
+        y_true = y_true.unsqueeze(-1)
+
+        y_true_mean = torch.sum(y_true * mask, dim=1, keepdim=True) / torch.sum(mask, dim=1, keepdim=True)
+        y_pred_mean = torch.sum(y_pred * mask, dim=1, keepdim=True) / torch.sum(mask, dim=1, keepdim=True)
+
+        y_true_var = torch.sum(mask * (y_true - y_true_mean) ** 2, dim=1, keepdim=True) / torch.sum(mask, dim=1, keepdim=True)
+        y_pred_var = torch.sum(mask * (y_pred - y_pred_mean) ** 2, dim=1, keepdim=True) / torch.sum(mask, dim=1, keepdim=True)
+
+        cov = torch.sum(mask * (y_true - y_true_mean) * (y_pred - y_pred_mean), dim=1, keepdim=True) / torch.sum(mask, dim=1, keepdim=True)
+
+        ccc = torch.mean(2.0 * cov / (y_true_var + y_pred_var + (y_true_mean - y_pred_mean) ** 2), dim=0)
+        ccc = ccc.squeeze(0)
+
+        ccc_loss_per_quantile = 1.0 - ccc
+
+        e = y_true - y_pred
+        quantiles = [.1, .5, .9]
+        v = torch.max(quantiles * e, (quantiles - 1) * e)
+
+        tilted_mae_per_quantile = v.mean(dim=1).mean(dim=0)
+
+        loss = (ccc_loss_per_quantile * tilted_mae_per_quantile).mean()
+
         return loss
 
 class CCCLoss(nn.Module):
@@ -518,7 +657,6 @@ def eval(full_preds, full_labels):
         val_pcc.append(pcc)
         val_rmse.append(rmse)
     return val_ccc, val_pcc, val_rmse
-
 
 # ccc, pcc, mse
 def cal_eval_metrics(preds, labels):

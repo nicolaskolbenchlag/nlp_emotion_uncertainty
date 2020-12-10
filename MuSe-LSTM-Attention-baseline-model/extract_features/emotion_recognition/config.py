@@ -29,8 +29,11 @@ PARTITION_FILE = "c1_muse_wild/partition.csv"
 PATH_TO_ALIGNED_FEATURES = "MuSe-LSTM-Attention-baseline-model/extracted_features/"
 
 PATH_TO_LABELS = "c1_muse_wild/label_segments/"
-# PATH_TO_LABELS_RAW = PATH_TO_MUSE_2020 + "raw/annotations/raw_annotations/"
+PATH_TO_LABELS_RAW = "c1_muse_wild/label_segments/raw_annotations"
+
 PATH_TO_TRANSCRIPTIONS = "c1_muse_wild/transcription_segments/"
+
+ANNOTATOR_MAPPING = "c1_muse_wild/annotator_id_mapping.json"
 
 # numerical
 EPSILON = 1e-6

@@ -36,7 +36,7 @@ PATH_TO_TRANSCRIPTIONS = "c1_muse_wild/transcription_segments/"
 
 # PARTITION_FILE = PATH_TO_MUSE_2020 + "raw/partition.csv"
 # META_FILE = PATH_TO_MUSE_2020 + "raw/metadata.csv"
-# ANNOTATOR_MAPPING = 'annotator_id_mapping.json'
+ANNOTATOR_MAPPING = "c1_muse_wild/annotator_id_mapping.json"
 
 # PATH_TO_RAW_AUDIO = os.path.join(PATH_TO_MUSE_2020, 'raw/audio_norm')
 # PATH_TO_RAW_VIDEO = os.path.join(PATH_TO_MUSE_2020, 'raw/video')
