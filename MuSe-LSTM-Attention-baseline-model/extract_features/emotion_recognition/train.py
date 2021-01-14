@@ -46,11 +46,12 @@ def train_model(model, data_loader, params):
     early_stop = 0
     for epoch in range(1, params.epochs + 1):
         
-        # train_loss = train(model, train_loader, criterion, optimizer, epoch, params)
-        train_loss = train_with_std(model, train_loader, criterion, optimizer, epoch, params)
-
+        ################################
+        train_loss = train(model, train_loader, criterion, optimizer, epoch, params)
+        # train_loss = train_with_std(model, train_loader, criterion, optimizer, epoch, params)
         ################################
         val_loss, val_ccc, val_pcc, val_rmse = validate(model, val_loader, criterion, params)
+        # val_loss, val_ccc, val_pcc, val_rmse = validate_std(model, val_loader, criterion, params)
         # val_loss, val_ccc, val_pcc, val_rmse = validate_quantile_regression(model, val_loader, criterion, params)
         ################################
 
@@ -115,8 +116,8 @@ def train(model, train_loader, criterion, optimizer, epoch, params):
         loss = 0.0
         for i in range(len(params.loss_weights)):
             
-            # branch_loss = criterion(preds[:, :, i], labels[:, :, i], feature_lens, params.label_smooth)
-            branch_loss = criterion(preds, labels[:, :, i], feature_lens, params.label_smooth)# NOTE: for tilted loss
+            branch_loss = criterion(preds[:, :, i], labels[:, :, i], feature_lens, params.label_smooth)
+            # branch_loss = criterion(preds, labels[:, :, i], feature_lens, params.label_smooth)# NOTE: for tilted loss
 
             loss = loss + params.loss_weights[i] * branch_loss
         loss.backward()
@@ -194,8 +195,7 @@ def validate(model, val_loader, criterion, params):
         val_size = 0
         for batch, batch_data in enumerate(val_loader, 1):
             
-            # features, feature_lens, labels, _ = batch_data
-            features, feature_lens, labels, _, std = batch_data# NOTE: with std
+            features, feature_lens, labels, _ = batch_data
             
             batch_size = features.size(0)
             # move to gpu if use gpu
@@ -210,6 +210,41 @@ def validate(model, val_loader, criterion, params):
             for i in range(len(params.loss_weights)):
                 
                 branch_loss = criterion(preds[:, :, i], labels[:, :, i], feature_lens, params.label_smooth)
+
+                loss = loss + params.loss_weights[i] * branch_loss
+            val_loss += loss.item() * batch_size
+            val_size += batch_size
+
+            full_preds.append(preds.cpu().detach().squeeze(0).numpy())
+            full_labels.append(labels.cpu().detach().squeeze(0).numpy())
+        val_loss /= val_size
+        val_ccc, val_pcc, val_rmse = utils.eval(full_preds, full_labels)
+
+    return val_loss, val_ccc, val_pcc, val_rmse
+
+def validate_std(model, val_loader, criterion, params):
+    model.eval()
+    full_preds, full_labels = [], []
+    with torch.no_grad():
+        val_loss = 0
+        val_size = 0
+        for batch, batch_data in enumerate(val_loader, 1):
+            
+            features, feature_lens, labels, _, std = batch_data# NOTE: with std
+            
+            batch_size = features.size(0)
+            # move to gpu if use gpu
+            if params.gpu is not None:
+                model.cuda()
+                features = features.cuda()
+                feature_lens = feature_lens.cuda()
+                labels = labels.cuda()
+            preds = model(features, feature_lens)
+            # cal loss
+            loss = 0.0
+            for i in range(len(params.loss_weights)):
+                
+                branch_loss = utils.CCCLoss()(preds[:, :, i], labels[:, :, i], feature_lens, params.label_smooth)
 
                 loss = loss + params.loss_weights[i] * branch_loss
             val_loss += loss.item() * batch_size
@@ -299,9 +334,12 @@ def validate_quantile_regression(model, val_loader, criterion, params):
             # print("Preds:", preds.cpu().detach().squeeze(0).numpy().shape)
             # print("Labels:", labels.cpu().detach().squeeze(0).numpy().shape)
 
-            preds = preds.cpu().detach().squeeze(0).numpy()
+            # preds = preds.cpu().detach().squeeze(0).numpy()# NOTE: for non-tilted-losses
+            
             # preds = preds[:, :, 1:2]# NOTE: use 0.5 quantile for prediction
-            # preds = preds.mean(axis=1).reshape((preds.shape[0], 1))# NOTE: use mean of all quantiles as prediction
+            
+            preds = preds.cpu().detach().squeeze(0).numpy()
+            preds = preds.mean(axis=1).reshape((preds.shape[0], 1))# NOTE: use mean of all quantiles as prediction
 
             full_preds.append(preds)
             full_labels.append(labels.cpu().detach().squeeze(0).numpy())
@@ -424,7 +462,7 @@ def plot_video_prediction_with_quantiles(time, pred_q0, pred_q1, pred_q2, label_
     plt.close()
 
 def evaluate_mc_dropout(model, test_loader, params):
-    n_ensembles = 3
+    n_ensembles = 10
     model.train()
     full_preds, full_labels = [], []
     with torch.no_grad():
@@ -436,6 +474,7 @@ def evaluate_mc_dropout(model, test_loader, params):
                 feature_lens = feature_lens.cuda()
                 labels = labels.cuda()
             preds = [model(features, feature_lens).cpu().detach().squeeze(0).numpy() for i in range(n_ensembles)]
+            # print(np.array(preds).shape)
             preds = np.mean(preds, axis=0)# TODO check
             full_preds.append(preds)
             full_labels.append(labels.cpu().detach().squeeze(0).numpy())
@@ -445,26 +484,21 @@ def evaluate_mc_dropout(model, test_loader, params):
 
 def predict_mc_dropout(model, data_loader, params):
     model.train()
-    n_ensembles = 3
+    n_ensembles = 10
 
+    full_preds, full_metas, full_labels = [], [], []
     with torch.no_grad():
-        ensemble_preds, ensemble_metas, ensemble_labels = [], [], []
-        for _ in range(n_ensembles):
-            full_preds, full_metas, full_labels = [], [], []
-            for _, batch_data in enumerate(data_loader, 1):
-                features, feature_lens, labels, metas = batch_data
-                if params.gpu is not None:
-                    model.cuda()
-                    features = features.cuda()
-                    feature_lens = feature_lens.cuda()
-                preds = model(features, feature_lens)
-                full_preds.append(preds.cpu().detach().squeeze(0).numpy())
-                full_metas.append(metas.detach().squeeze(0).numpy())
-                full_labels.append(labels.cpu().detach().squeeze(0).numpy())
-            
-            ensemble_preds.append(full_preds)
-            ensemble_metas.append(full_metas)
-            ensemble_labels.append(full_labels)
+        for batch, batch_data in enumerate(data_loader, 1):
+            features, feature_lens, labels, metas = batch_data
+            # move to gpu if use gpu
+            if params.gpu is not None:
+                model.cuda()
+                features = features.cuda()
+                feature_lens = feature_lens.cuda()
+            preds = [model(features, feature_lens).cpu().detach().squeeze(0).numpy() for i in range(n_ensembles)]
+            full_preds.append(np.array(preds))
+            full_metas.append(metas.detach().squeeze(0).numpy())
+            full_labels.append(labels.cpu().detach().squeeze(0).numpy())
 
         prediction_folder = config.PREDICTION_FOLDER
         if params.save_dir is not None:
@@ -483,25 +517,27 @@ def predict_mc_dropout(model, data_loader, params):
         partition = data_loader.dataset.partition
 
         for idx, emo_dim in enumerate(params.emo_dim_set):
-            for i in range(len(ensemble_preds[0])):
-                meta = ensemble_metas[0][i]
-                label = ensemble_labels[0][i]
+            for i in range(len(full_preds)):
+
+                meta = full_metas[i]
                 vid = meta[0, 0]
+                label = full_labels[i]
+                
+                pred = full_preds[i]
 
-                pred = [p[i] for p in ensemble_preds]
-
-                pred = np.array(pred)[:,:,idx]
-
+                pred = pred.squeeze(2)
                 pred_mean = np.mean(pred, axis=0)
-                pred_var = np.var(pred, axis=0)
+                pred_std = np.std(pred, axis=0)
                 pred_min = np.min(pred, axis=0)
                 pred_max = np.max(pred, axis=0)
+
+                # print(pred.shape)
 
                 img_emo_dir = os.path.join(img_dir, emo_dim)
                 if not os.path.exists(img_emo_dir):
                     os.mkdir(img_emo_dir)
                     
-                plot_video_prediction_with_uncertainty(meta[:, 1], pred_mean, pred_var, label, partition, vid, emo_dim, img_emo_dir, pred_min, pred_max)
+                plot_video_prediction_with_uncertainty(meta[:, 1], pred_mean, pred_std, label, partition, vid, emo_dim, img_emo_dir, pred_min, pred_max)
 
 
 def plot_video_prediction_with_uncertainty(time, pred_mean, pred_var, label_raw, partition, vid, emo_dim, save_dir, pred_min, pred_max):
@@ -525,15 +561,15 @@ def plot_video_prediction_with_uncertainty(time, pred_mean, pred_var, label_raw,
     plt.figure(figsize=(20, 10))
     
     # plt.fill_between(time, pred_min, pred_max, color='lightblue', alpha=.5)
-    plt.fill_between(time, pred_min, pred_max, color='lightblue', alpha=.5)
+    plt.fill_between(time, pred_mean - pred_var, pred_mean + pred_var, color='lightblue', alpha=.5)
 
     plt.plot(time, label_target, 'red', label='target')
     plt.plot(time, pred_mean, 'blue', label=f'prediction')
 
     plt.title(f"{emo_dim} of video '{vid}' [{partition}]")
-    plt.legend()
-    plt.xlabel('time (s)')
-    plt.ylabel(emo_dim)
+    plt.legend(prop={"size": 10})
+    plt.xlabel('time', fontsize=16)
+    plt.ylabel(emo_dim, fontsize=16)
 
     ax = plt.gca()
     if time[-1] < 400:

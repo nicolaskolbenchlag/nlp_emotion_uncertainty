@@ -80,5 +80,6 @@ class MyDatasetStdv(Dataset):
         meta = self.metas[idx]
 
         vid_id = meta[0, 0]
-        stdvs = self.stdv_among_annotations[vid_id.item()]
-        return feature, feature_len, label, meta, stdvs
+        std = self.stdv_among_annotations[vid_id.item()]
+
+        return feature, feature_len, label, meta, std

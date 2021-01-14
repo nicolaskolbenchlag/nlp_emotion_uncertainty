@@ -440,7 +440,60 @@ class CCCLossWithStd(nn.Module):
     def __init__(self):
         super(CCCLossWithStd, self).__init__()
 
-    def forward(self, y_pred, y_true, stdvs, seq_lens=None, label_smooth=None):
+    def forward(self, y_pred, y_true, cc, seq_lens=None, label_smooth=None):
+        """
+        :param y_pred: (batch_size, seq_len)
+        :param y_true: (batch_size, seq_len)
+        :param seq_lens: (batch_size,)
+        :return:
+        """
+        # make padding mask
+        if seq_lens is not None:
+            mask = torch.ones_like(y_true, device=y_true.device)
+            for i, seq_len in enumerate(seq_lens):
+                mask[i, seq_len:] = 0
+        else:
+            mask = torch.ones_like(y_true, device=y_true.device)
+        # smooth label by average pooling
+        if label_smooth is not None:
+            y_true = torch.nn.functional.avg_pool1d(y_true.unsqueeze(1), kernel_size=label_smooth,
+                                                    stride=1, padding=(label_smooth - 1) // 2,
+                                                    count_include_pad=False)
+            y_true = y_true.squeeze(1)
+
+        y_true_mean = torch.sum(y_true * mask, dim=1, keepdim=True) / torch.sum(mask, dim=1, keepdim=True)
+        y_pred_mean = torch.sum(y_pred * mask, dim=1, keepdim=True) / torch.sum(mask, dim=1, keepdim=True)
+        # biased variance
+        y_true_var = torch.sum(mask * (y_true - y_true_mean) ** 2, dim=1, keepdim=True) / torch.sum(mask, dim=1,
+                                                                                                    keepdim=True)
+        y_pred_var = torch.sum(mask * (y_pred - y_pred_mean) ** 2, dim=1, keepdim=True) / torch.sum(mask, dim=1,
+                                                                                                    keepdim=True)
+
+        cov = torch.sum(mask * (y_true - y_true_mean) * (y_pred - y_pred_mean), dim=1, keepdim=True) / torch.sum(mask, dim=1, keepdim=True)
+        ccc = 2.0 * cov / (y_true_var + y_pred_var + (y_true_mean - y_pred_mean) ** 2)
+
+        #####
+        # factor = 1 - cc
+        factor = cc
+        # ccc = ccc.squeeze(1) * factor
+        #####
+
+        # ccc = torch.mean(ccc, dim=0)
+        # ccc_loss = 1.0 - ccc
+
+        ccc_loss = factor * (1. - ccc.squeeze(1))
+        # print("ccc_loss_sample:", ccc_loss)
+        
+        ccc_loss = torch.mean(ccc_loss, dim=0)
+        # print("ccc_loss:", ccc_loss)
+
+        return ccc_loss
+
+class TiltedCCCLoss(nn.Module):
+    def __init__(self):
+        super(TiltedCCCLoss, self).__init__()
+
+    def forward(self, y_pred, y_true, seq_lens=None, label_smooth=None):
         """
         :param y_pred: (batch_size, seq_len)
         :param y_true: (batch_size, seq_len)
@@ -473,63 +526,18 @@ class CCCLossWithStd(nn.Module):
                                                                                                                  dim=1,
                                                                                                                  keepdim=True)
 
-        ccc = torch.mean(2.0 * cov / (y_true_var + y_pred_var + (y_true_mean - y_pred_mean) ** 2), dim=0)  # (1,*)
-        ccc = ccc.squeeze(0)  # (*,) if necessary
-        ccc_loss = 1.0 - ccc
+        ccc = torch.mean(2.0 * cov / (y_true_var + y_pred_var + (y_true_mean - y_pred_mean) ** 2), dim=0)  # (3,*)
+        # ccc = ccc.squeeze(0)  # (*,) if necessary
+        ccc_losses = 1.0 - ccc
 
-        print(stdvs)
-        ccc_loss = ccc_loss * torch.mean(stdvs)
-
-        return ccc_loss
-
-class TiltedCCCLoss(nn.Module):
-    def __init__(self):
-        super(TiltedCCCLoss, self).__init__()
-
-    def forward(self, y_pred, y_true, seq_lens=None, label_smooth=None):
-        """
-        :param y_pred: (batch_size, seq_len)
-        :param y_true: (batch_size, seq_len)
-        :param seq_lens: (batch_size,)
-        :return:
-        """
-        # make padding mask
-        if seq_lens is not None:
-            mask = torch.ones_like(y_true, device=y_true.device)
-            for i, seq_len in enumerate(seq_lens):
-                mask[i, seq_len:] = 0
-        else:
-            mask = torch.ones_like(y_true, device=y_true.device)
-        # smooth label by average pooling
-        if label_smooth is not None:
-            y_true = torch.nn.functional.avg_pool1d(y_true.unsqueeze(1), kernel_size=label_smooth,
-                                                    stride=1, padding=(label_smooth - 1) // 2,
-                                                    count_include_pad=False)
-            y_true = y_true.squeeze(1)
-        
-        
-        y_true = y_true.unsqueeze(-1)
-
-        y_true_mean = torch.sum(y_true * mask, dim=1, keepdim=True) / torch.sum(mask, dim=1, keepdim=True)
-        y_pred_mean = torch.sum(y_pred * mask, dim=1, keepdim=True) / torch.sum(mask, dim=1, keepdim=True)
-
-        y_true_var = torch.sum(mask * (y_true - y_true_mean) ** 2, dim=1, keepdim=True) / torch.sum(mask, dim=1, keepdim=True)
-        y_pred_var = torch.sum(mask * (y_pred - y_pred_mean) ** 2, dim=1, keepdim=True) / torch.sum(mask, dim=1, keepdim=True)
-
-        cov = torch.sum(mask * (y_true - y_true_mean) * (y_pred - y_pred_mean), dim=1, keepdim=True) / torch.sum(mask, dim=1, keepdim=True)
-
-        ccc = torch.mean(2.0 * cov / (y_true_var + y_pred_var + (y_true_mean - y_pred_mean) ** 2), dim=0)
-        ccc = ccc.squeeze(0)
-
-        ccc_loss_per_quantile = 1.0 - ccc
-
-        e = y_true - y_pred
+        #####
         quantiles = [.1, .5, .9]
-        v = torch.max(quantiles * e, (quantiles - 1) * e)
-
-        tilted_mae_per_quantile = v.mean(dim=1).mean(dim=0)
-
-        loss = (ccc_loss_per_quantile * tilted_mae_per_quantile).mean()
+        losses = []
+        for i, q in enumerate(quantiles):
+            errors = ccc_losses
+            losses.append(torch.max((q - 1) * errors, q * errors).unsqueeze(1).mean(dim=-1))        
+        loss = torch.mean(torch.cat(losses))
+        #####
 
         return loss
 
@@ -640,6 +648,43 @@ class L1Loss(nn.Module):
             loss = loss.mean()
         else:
             loss = torch.nn.functional.l1_loss(y_pred, y_true)
+        return loss
+
+class L1LossWithStd(nn.Module):
+    def __init__(self):
+        super(L1LossWithStd, self).__init__()
+
+    def forward(self, y_pred, y_true, cc, seq_lens=None, label_smooth=None):
+        """
+        :param y_pred: (batch_size, seq_len)
+        :param y_true: (batch_size, seq_len)
+        :return:
+        """
+        # smooth label by average pooling
+        if label_smooth is not None:
+            y_true = torch.nn.functional.avg_pool1d(y_true.unsqueeze(1), kernel_size=label_smooth,
+                                                    stride=1, padding=(label_smooth - 1) // 2,
+                                                    count_include_pad=False)
+            y_true = y_true.squeeze(1)
+
+        # get mask
+        if seq_lens is not None:
+            mask = torch.ones_like(y_true, device=y_true.device)
+            for i, seq_len in enumerate(seq_lens):
+                mask[i, seq_len:] = 0
+            loss = torch.nn.functional.l1_loss(y_pred, y_true, reduction='none')
+            # loss = loss * mask
+            # loss = loss.sum() / seq_lens.sum()
+            mask = mask.bool()
+            loss = loss.masked_select(mask)
+            loss = loss.mean()
+        else:
+            loss = torch.nn.functional.l1_loss(y_pred, y_true)
+        
+        factor = 1 - cc.mean()
+        # factor = torch.Tensor.float(cc).mean()
+        loss = loss * factor
+
         return loss
 
 

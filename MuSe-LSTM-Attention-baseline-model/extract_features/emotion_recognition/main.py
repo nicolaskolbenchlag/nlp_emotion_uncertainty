@@ -209,14 +209,14 @@ def main(params):
             train_model(model, data_loader, params)
         
         ########################################
-        # test_ccc, test_pcc, test_rmse = \
-        #     evaluate(model, data_loader['devel'], params)
-        
         test_ccc, test_pcc, test_rmse = \
-            train.evaluate_quantile_regression(model, data_loader['devel'], params)
+            evaluate(model, data_loader['test'], params)
         
         # test_ccc, test_pcc, test_rmse = \
-        #     train.evaluate_mc_dropout(model, data_loader['devel'], params)
+        #     train.evaluate_quantile_regression(model, data_loader['test'], params)
+        
+        # test_ccc, test_pcc, test_rmse = \
+        #     train.evaluate_mc_dropout(model, data_loader['test'], params)
         ########################################
 
         val_losses.append(val_loss)
@@ -268,9 +268,9 @@ def main(params):
         best_model = torch.load(best_model_files[best_idx])
         
         ########################################
-        # train.predict_mc_dropout(best_model, data_loader['devel'], params)
-        # train.predict_quantile_regression(best_model, data_loader['devel'], params)
-        # predict(best_model, data_loader['devel'], params)# TODO: fix test-usage
+        # train.predict_mc_dropout(best_model, data_loader['test'], params)
+        # train.predict_quantile_regression(best_model, data_loader['test'], params)
+        # predict(best_model, data_loader['test'], params)
         ########################################
         
         print('...done.')

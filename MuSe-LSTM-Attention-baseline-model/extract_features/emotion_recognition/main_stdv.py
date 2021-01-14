@@ -7,6 +7,8 @@ from dateutil import tz
 import numpy as np
 import torch
 
+import pandas as pd
+
 from train import train_model, predict, evaluate_mc_dropout
 from model import Model
 from dataset import MyDatasetStdv
@@ -169,9 +171,10 @@ def main(params):
     print('Constructing dataset and data loader ...')
     
     ###############################################################################################
-    # NOTE: calculate standard deviation among annotators
+    # NOTE: calculate correlation among annotators
     all_annotations = {}
-    for annotator in [2, 4, 7, 5, 8]:#range(1, 16)
+    annotators = [2, 4, 7, 5, 8]#range(1, 16)
+    for annotator in annotators:
         data = utils.load_data(params, params.feature_set, params.emo_dim_set, params.normalize, params.label_preproc, params.norm_opts, params.segment_type, params.win_len, params.hop_len, save=params.cache, refresh=params.refresh, add_seg_id=params.add_seg_id, annotator=annotator)
         
         for partition in ["devel", "test", "train"]:
@@ -179,7 +182,7 @@ def main(params):
             labels = data[partition]["label"]
             
             labels = [[ts[0] for ts in sample] for sample in labels]# NOTE: gets first predicted emo_dim / only works with 1
-
+            
             for i, meta in enumerate(metas):
 
                 vid_id = meta[0][0]
@@ -189,24 +192,29 @@ def main(params):
                 label = labels[i]
 
                 if vid_id not in all_annotations.keys():
-                    all_annotations[vid_id] = [[] for _ in range(len(label))]# NOTE: list for each timestep
+                    all_annotations[vid_id] = []
                 
-                for ts, label_at_ts in enumerate(label):
-                    all_annotations[vid_id][ts].append(label_at_ts)
+                all_annotations[vid_id].append(label)
     
+    ccs = {}
+    for vid_id, annotations in all_annotations.items():
+        ccs_tmp = []
 
-    stdvs = {}# NOTE: video_id : [stdv_ts_1, stdv_ts_2, stdv_ts_3, ..., stdv_ts_n]
-    for vid_id, labels in all_annotations.items():
-        stdvs[vid_id] = torch.tensor([np.abs(np.std(ts)) for ts in labels]).float()
-    
+        for annotation_1 in annotations:
+            for annotation_2 in annotations:
+                if annotation_1 != annotation_2:
+                    cc = pd.Series(annotation_1).corr(pd.Series(annotation_2))
+                    ccs_tmp.append(cc)
 
-    min_ = min([min(sample) for sample in stdvs.values()])
-    stdvs = {vid_id: values - min_ for vid_id, values in stdvs.items()}
-    max_ = max([max(sample) for sample in stdvs.values()])
-    stdvs = {vid_id: values / max_ for vid_id, values in stdvs.items()}
+        mean = torch.tensor(ccs_tmp).float().mean().abs()
+        mean = (mean + 1) / 2 if not torch.isnan(mean).item() else torch.tensor(1.)
+        ccs[vid_id] = mean
+
 
     data = utils.load_data(params, params.feature_set, params.emo_dim_set, params.normalize, params.label_preproc, params.norm_opts, params.segment_type, params.win_len, params.hop_len, save=params.cache, refresh=params.refresh, add_seg_id=params.add_seg_id, annotator=None)
-    data_loader = get_dataloaders(data, stdvs)
+    data_loader = get_dataloaders(data, ccs)
+
+    data_loader_gt = None
     ###############################################################################################
 
     # check params
@@ -255,7 +263,7 @@ def main(params):
         
         ########################################
         test_ccc, test_pcc, test_rmse = \
-            evaluate(model, data_loader['devel'], params)
+            evaluate(model, data_loader['test'], params)
         
         # test_ccc, test_pcc, test_rmse = \
             # train.evaluate_quantile_regression(model, data_loader['devel'], params)
