@@ -1,0 +1,64 @@
+/nas/student/NicolasKolbenschlag/emotion_uncertainty/MuSe-LSTM-Attention-baseline-model/extract_features/emotion_recognition/main.py --feature_set fasttext --emo_dim_set valence --epochs 100 --refresh --predict --n_seeds 10 --seed 314 --attn --rnn_bi --loss ccc --rnn_dr .3 --attn_dr .3 --out_dr .3
+Constructing dataset and data loader ...
+Constructing data from scratch ...
+Samples in partitions: (3122, 62, 64)
+Input feature dim: 300.
+==================================================
+Training model... [seed 314]
+/nas/student/NicolasKolbenschlag/emotion_uncertainty/venv/lib/python3.7/site-packages/torch/nn/modules/rnn.py:61: UserWarning: dropout option adds dropout after all but last recurrent layer, so non-zero dropout expects num_layers greater than 1, but got dropout=0.3 and num_layers=1
+  "num_layers={}".format(dropout, num_layers))
+Note: target can not be optimized for 15 consecutive epochs, early stop the training process!
+Seed 314 | Best [Val CCC]: 0.2025 [' 0.2025']| Loss: 0.8144 | PCC: 0.2037 ['0.2037'] | RMSE: 0.5058 ['0.5058']
+On Test: CCC  0.2705 | PCC  0.2760 | RMSE  0.4854
+==================================================
+Training model... [seed 315]
+Note: target can not be optimized for 15 consecutive epochs, early stop the training process!
+Seed 315 | Best [Val CCC]: 0.2006 [' 0.2006']| Loss: 0.8238 | PCC: 0.2028 ['0.2028'] | RMSE: 0.5343 ['0.5343']
+On Test: CCC  0.2920 | PCC  0.3028 | RMSE  0.4898
+==================================================
+Training model... [seed 316]
+Note: target can not be optimized for 15 consecutive epochs, early stop the training process!
+Seed 316 | Best [Val CCC]: 0.2265 [' 0.2265']| Loss: 0.7798 | PCC: 0.2296 ['0.2296'] | RMSE: 0.4898 ['0.4898']
+On Test: CCC  0.3219 | PCC  0.3265 | RMSE  0.4799
+==================================================
+Training model... [seed 317]
+Note: target can not be optimized for 15 consecutive epochs, early stop the training process!
+Seed 317 | Best [Val CCC]: 0.2141 [' 0.2141']| Loss: 0.8044 | PCC: 0.2222 ['0.2222'] | RMSE: 0.4653 ['0.4653']
+On Test: CCC  0.3293 | PCC  0.3332 | RMSE  0.4764
+==================================================
+Training model... [seed 318]
+Note: target can not be optimized for 15 consecutive epochs, early stop the training process!
+Seed 318 | Best [Val CCC]: 0.2307 [' 0.2307']| Loss: 0.7902 | PCC: 0.2339 ['0.2339'] | RMSE: 0.5030 ['0.5030']
+On Test: CCC  0.3269 | PCC  0.3296 | RMSE  0.4822
+==================================================
+Training model... [seed 319]
+Note: target can not be optimized for 15 consecutive epochs, early stop the training process!
+Seed 319 | Best [Val CCC]: 0.2086 [' 0.2086']| Loss: 0.8003 | PCC: 0.2127 ['0.2127'] | RMSE: 0.4909 ['0.4909']
+On Test: CCC  0.2841 | PCC  0.2935 | RMSE  0.4898
+==================================================
+Training model... [seed 320]
+Note: target can not be optimized for 15 consecutive epochs, early stop the training process!
+Seed 320 | Best [Val CCC]: 0.2172 [' 0.2172']| Loss: 0.7989 | PCC: 0.2178 ['0.2178'] | RMSE: 0.5214 ['0.5214']
+On Test: CCC  0.3168 | PCC  0.3334 | RMSE  0.5200
+==================================================
+Training model... [seed 321]
+Note: target can not be optimized for 15 consecutive epochs, early stop the training process!
+Seed 321 | Best [Val CCC]: 0.1976 [' 0.1976']| Loss: 0.8186 | PCC: 0.2023 ['0.2023'] | RMSE: 0.4962 ['0.4962']
+On Test: CCC  0.3303 | PCC  0.3330 | RMSE  0.4851
+==================================================
+Training model... [seed 322]
+Note: target can not be optimized for 15 consecutive epochs, early stop the training process!
+Seed 322 | Best [Val CCC]: 0.2283 [' 0.2283']| Loss: 0.7815 | PCC: 0.2299 ['0.2299'] | RMSE: 0.4868 ['0.4868']
+On Test: CCC  0.3228 | PCC  0.3273 | RMSE  0.4898
+==================================================
+Training model... [seed 323]
+Note: target can not be optimized for 15 consecutive epochs, early stop the training process!
+Seed 323 | Best [Val CCC]: 0.2178 [' 0.2178']| Loss: 0.7831 | PCC: 0.2192 ['0.2192'] | RMSE: 0.4974 ['0.4974']
+On Test: CCC  0.3125 | PCC  0.3150 | RMSE  0.4876
+==================================================
+On ground-truth labels:	Best	[Val CCC] for seed "318":	 0.2307
+On ground-truth labels:		[Test CCC] for seed "318":	 0.3269
+----------------------------------------------------------------------------------------------------
+Predict val & test videos...
+...done.
+Delete model "MuSe-LSTM-Attention-baseline-model/output/model/2021-01-12-21-29_[fasttext]_[valence]_[NOSEG]_[lstm_64_1_True]_[True_1_4]_[0.005_1024_0.3_0.3_0.3]_None_[10_318_None_None].pth".

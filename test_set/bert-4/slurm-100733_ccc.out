@@ -1,0 +1,62 @@
+/nas/student/NicolasKolbenschlag/emotion_uncertainty/MuSe-LSTM-Attention-baseline-model/extract_features/emotion_recognition/main.py --feature_set bert-4 --emo_dim_set valence --epochs 100 --refresh --predict --n_seeds 10 --attn --rnn_bi --loss ccc
+Constructing dataset and data loader ...
+Constructing data from scratch ...
+Samples in partitions: (3122, 62, 64)
+Input feature dim: 768.
+==================================================
+Training model... [seed 314]
+Note: target can not be optimized for 15 consecutive epochs, early stop the training process!
+Seed 314 | Best [Val CCC]: 0.4582 [' 0.4582']| Loss: 0.5678 | PCC: 0.4587 ['0.4587'] | RMSE: 0.4170 ['0.4170']
+On Test: CCC  0.5852 | PCC  0.5863 | RMSE  0.3884
+==================================================
+Training model... [seed 315]
+Note: target can not be optimized for 15 consecutive epochs, early stop the training process!
+Seed 315 | Best [Val CCC]: 0.4463 [' 0.4463']| Loss: 0.5702 | PCC: 0.4471 ['0.4471'] | RMSE: 0.4176 ['0.4176']
+On Test: CCC  0.5673 | PCC  0.5688 | RMSE  0.3953
+==================================================
+Training model... [seed 316]
+Note: target can not be optimized for 15 consecutive epochs, early stop the training process!
+Seed 316 | Best [Val CCC]: 0.4294 [' 0.4294']| Loss: 0.5766 | PCC: 0.4361 ['0.4361'] | RMSE: 0.4440 ['0.4440']
+On Test: CCC  0.5525 | PCC  0.5691 | RMSE  0.3987
+==================================================
+Training model... [seed 317]
+Note: target can not be optimized for 15 consecutive epochs, early stop the training process!
+Seed 317 | Best [Val CCC]: 0.4215 [' 0.4215']| Loss: 0.5720 | PCC: 0.4216 ['0.4216'] | RMSE: 0.4342 ['0.4342']
+On Test: CCC  0.5459 | PCC  0.5659 | RMSE  0.3996
+==================================================
+Training model... [seed 318]
+Note: target can not be optimized for 15 consecutive epochs, early stop the training process!
+Seed 318 | Best [Val CCC]: 0.4262 [' 0.4262']| Loss: 0.5879 | PCC: 0.4272 ['0.4272'] | RMSE: 0.4461 ['0.4461']
+On Test: CCC  0.5576 | PCC  0.5778 | RMSE  0.4080
+==================================================
+Training model... [seed 319]
+Note: target can not be optimized for 15 consecutive epochs, early stop the training process!
+Seed 319 | Best [Val CCC]: 0.4398 [' 0.4398']| Loss: 0.5792 | PCC: 0.4422 ['0.4422'] | RMSE: 0.4140 ['0.4140']
+On Test: CCC  0.5618 | PCC  0.5647 | RMSE  0.3929
+==================================================
+Training model... [seed 320]
+Note: target can not be optimized for 15 consecutive epochs, early stop the training process!
+Seed 320 | Best [Val CCC]: 0.4270 [' 0.4270']| Loss: 0.5879 | PCC: 0.4272 ['0.4272'] | RMSE: 0.4426 ['0.4426']
+On Test: CCC  0.5444 | PCC  0.5528 | RMSE  0.4040
+==================================================
+Training model... [seed 321]
+Note: target can not be optimized for 15 consecutive epochs, early stop the training process!
+Seed 321 | Best [Val CCC]: 0.4426 [' 0.4426']| Loss: 0.5718 | PCC: 0.4481 ['0.4481'] | RMSE: 0.4133 ['0.4133']
+On Test: CCC  0.5757 | PCC  0.5817 | RMSE  0.3790
+==================================================
+Training model... [seed 322]
+Note: target can not be optimized for 15 consecutive epochs, early stop the training process!
+Seed 322 | Best [Val CCC]: 0.4086 [' 0.4086']| Loss: 0.5981 | PCC: 0.4157 ['0.4157'] | RMSE: 0.4539 ['0.4539']
+On Test: CCC  0.5659 | PCC  0.5687 | RMSE  0.3976
+==================================================
+Training model... [seed 323]
+Note: target can not be optimized for 15 consecutive epochs, early stop the training process!
+Seed 323 | Best [Val CCC]: 0.4164 [' 0.4164']| Loss: 0.5992 | PCC: 0.4185 ['0.4185'] | RMSE: 0.4596 ['0.4596']
+On Test: CCC  0.5501 | PCC  0.5551 | RMSE  0.4019
+==================================================
+On ground-truth labels:	Best	[Val CCC] for seed "314":	 0.4582
+On ground-truth labels:		[Test CCC] for seed "314":	 0.5852
+----------------------------------------------------------------------------------------------------
+Predict val & test videos...
+...done.
+Delete model "MuSe-LSTM-Attention-baseline-model/output/model/2020-12-22-07-39_[bert-4]_[valence]_[NOSEG]_[lstm_64_1_True]_[True_1_4]_[0.005_1024_0.0_0.0_0.0]_None_[10_314_None_None].pth".

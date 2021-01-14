@@ -4,5 +4,5 @@ c1_muse_wild/
 MuSe-LSTM-Attention-baseline-model/extracted_features/
 MuSe-Wild.zip
 
-*.out
+# *.out
 MuSe-LSTM-Attention-baseline-model/output/

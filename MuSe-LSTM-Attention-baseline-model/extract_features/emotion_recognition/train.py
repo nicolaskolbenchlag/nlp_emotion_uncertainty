@@ -442,6 +442,8 @@ def plot_video_prediction_with_quantiles(time, pred_q0, pred_q1, pred_q2, label_
     plt.figure(figsize=(20, 10))
     
     plt.fill_between(time, pred_q0, pred_q2, color='lightblue', alpha=.5)
+    plt.plot(time, pred_q0, 'blue')
+    plt.plot(time, pred_q2, 'blue')
 
     plt.plot(time, label_target, 'red', label='target')
     plt.plot(time, pred_q1, 'blue', label=f'prediction')

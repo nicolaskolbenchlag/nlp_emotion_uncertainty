@@ -1,0 +1,26 @@
+/nas/student/NicolasKolbenschlag/emotion_uncertainty/MuSe-LSTM-Attention-baseline-model/extract_features/emotion_recognition/main.py --feature_set bert-4 --emo_dim_set valence --epochs 100 --refresh --predict --n_seeds 3 --attn --rnn_bi --loss tilted --seed 321
+Constructing dataset and data loader ...
+Constructing data from scratch ...
+Samples in partitions: (3122, 62, 64)
+Input feature dim: 768.
+==================================================
+Training model... [seed 321]
+Seed 321 | Best [Val CCC]: 0.3372 [' 0.3372']| Loss: 0.0982 | PCC: 0.3891 ['0.3891'] | RMSE: 0.3880 ['0.3880']
+On Test: CCC  0.4048 | PCC  0.5396 | RMSE  0.3950
+==================================================
+Training model... [seed 322]
+Note: target can not be optimized for 15 consecutive epochs, early stop the training process!
+Seed 322 | Best [Val CCC]: 0.0036 [' 0.0036']| Loss: 0.1073 | PCC: 0.1333 ['0.1333'] | RMSE: 0.4077 ['0.4077']
+On Test: CCC  0.0007 | PCC  0.0852 | RMSE  0.4409
+==================================================
+Training model... [seed 323]
+Note: target can not be optimized for 15 consecutive epochs, early stop the training process!
+Seed 323 | Best [Val CCC]: 0.0092 [' 0.0092']| Loss: 0.1056 | PCC: 0.1417 ['0.1417'] | RMSE: 0.4066 ['0.4066']
+On Test: CCC  0.0042 | PCC  0.0864 | RMSE  0.4401
+==================================================
+On ground-truth labels:	Best	[Val CCC] for seed "321":	 0.3372
+On ground-truth labels:		[Test CCC] for seed "321":	 0.4048
+----------------------------------------------------------------------------------------------------
+Predict val & test videos...
+...done.
+Delete model "MuSe-LSTM-Attention-baseline-model/output/model/2021-01-02-18-57_[bert-4]_[valence]_[NOSEG]_[lstm_64_1_True]_[True_1_4]_[0.005_1024_0.0_0.0_0.0]_None_[3_321_None_None].pth".
