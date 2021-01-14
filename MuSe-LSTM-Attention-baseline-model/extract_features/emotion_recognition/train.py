@@ -50,9 +50,14 @@ def train_model(model, data_loader, params):
         train_loss = train(model, train_loader, criterion, optimizer, epoch, params)
         # train_loss = train_with_std(model, train_loader, criterion, optimizer, epoch, params)
         ################################
-        val_loss, val_ccc, val_pcc, val_rmse = validate(model, val_loader, criterion, params)
+        
         # val_loss, val_ccc, val_pcc, val_rmse = validate_std(model, val_loader, criterion, params)
-        # val_loss, val_ccc, val_pcc, val_rmse = validate_quantile_regression(model, val_loader, criterion, params)
+        
+        if params.uncertainty_approach == "quantile_regression":
+            val_loss, val_ccc, val_pcc, val_rmse = validate_quantile_regression(model, val_loader, criterion, params)
+        
+        else:
+            val_loss, val_ccc, val_pcc, val_rmse = validate(model, val_loader, criterion, params)
         ################################
 
         mean_val_ccc, mean_val_pcc, mean_val_rmse = np.mean(val_ccc), np.mean(val_pcc), np.mean(val_rmse)

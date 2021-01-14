@@ -127,6 +127,10 @@ def parse_params():
     parser.add_argument('--refresh', action='store_true',
                         help='whether construct data from scratch. (default: False)')
 
+    
+    # NOTE: choose uncertainty approach
+    parser.add_argument('--uncertainty_approach', type=str, choices=[None, 'quantile_regression', 'monte_carlo_dropout'])
+
     # parse
     args = parser.parse_args()
     return args
@@ -209,14 +213,17 @@ def main(params):
             train_model(model, data_loader, params)
         
         ########################################
-        test_ccc, test_pcc, test_rmse = \
-            evaluate(model, data_loader['test'], params)
+        if params.uncertainty_approach == None:
+            test_ccc, test_pcc, test_rmse = evaluate(model, data_loader['test'], params)
         
-        # test_ccc, test_pcc, test_rmse = \
-        #     train.evaluate_quantile_regression(model, data_loader['test'], params)
+        elif params.uncertainty_approach == "quantile_regression":
+            test_ccc, test_pcc, test_rmse = train.evaluate_quantile_regression(model, data_loader['test'], params)
         
-        # test_ccc, test_pcc, test_rmse = \
-        #     train.evaluate_mc_dropout(model, data_loader['test'], params)
+        elif params.uncertainty_approach == "monte_carlo_dropout":
+            test_ccc, test_pcc, test_rmse = train.evaluate_mc_dropout(model, data_loader['test'], params)
+        
+        else:
+            raise NotImplementedError()
         ########################################
 
         val_losses.append(val_loss)
@@ -268,9 +275,17 @@ def main(params):
         best_model = torch.load(best_model_files[best_idx])
         
         ########################################
-        # train.predict_mc_dropout(best_model, data_loader['test'], params)
-        # train.predict_quantile_regression(best_model, data_loader['test'], params)
-        # predict(best_model, data_loader['test'], params)
+        if params.uncertainty_approach == None:
+            predict(best_model, data_loader['test'], params)
+        
+        elif params.uncertainty_approach == "quantile_regression":
+            train.predict_quantile_regression(best_model, data_loader['test'], params)
+        
+        elif params.uncertainty_approach == "monte_carlo_dropout":
+            train.predict_mc_dropout(best_model, data_loader['test'], params)
+        
+        else:
+            raise NotImplementedError()
         ########################################
         
         print('...done.')

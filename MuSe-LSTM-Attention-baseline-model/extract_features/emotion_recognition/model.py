@@ -90,6 +90,7 @@ class Regressor(nn.Module):
         y = self.fc_2(self.fc_1(x))
         return y
 
+# NOTE: Same as Regressor but 3 output noges (for 3 quantiles)
 class QuantileRegressor(nn.Module):
     def __init__(self, d_in, d_hidden, d_out, dropout=0, bias=0):
         super(QuantileRegressor, self).__init__()
@@ -128,8 +129,10 @@ class Model(nn.Module):
         else:
             d_rnn_out = params.d_rnn
 
-        self.out = Regressor(d_rnn_out, params.d_out_fc, len(params.emo_dim_set), dropout=params.out_dr)
-        # self.out = QuantileRegressor(d_rnn_out, params.d_out_fc, len(params.emo_dim_set), dropout=params.out_dr)
+        if params.uncertainty_approach == "quantile_regression":
+            self.out = QuantileRegressor(d_rnn_out, params.d_out_fc, len(params.emo_dim_set), dropout=params.out_dr)
+        else:
+            self.out = Regressor(d_rnn_out, params.d_out_fc, len(params.emo_dim_set), dropout=params.out_dr)
 
     def forward(self, x, x_len):
         if self.params.d_in != self.params.d_rnn and not self.params.transformer:
