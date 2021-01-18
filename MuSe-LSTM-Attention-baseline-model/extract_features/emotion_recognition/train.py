@@ -121,8 +121,11 @@ def train(model, train_loader, criterion, optimizer, epoch, params):
         loss = 0.0
         for i in range(len(params.loss_weights)):
             
-            branch_loss = criterion(preds[:, :, i], labels[:, :, i], feature_lens, params.label_smooth)
-            # branch_loss = criterion(preds, labels[:, :, i], feature_lens, params.label_smooth)# NOTE: for tilted loss
+            if params.uncertainty_approach == "quantile_regression":
+                branch_loss = criterion(preds, labels[:, :, i], feature_lens, params.label_smooth)
+            
+            else:
+                branch_loss = criterion(preds[:, :, i], labels[:, :, i], feature_lens, params.label_smooth)
 
             loss = loss + params.loss_weights[i] * branch_loss
         loss.backward()
@@ -406,7 +409,11 @@ def predict_quantile_regression(model, data_loader, params):
         
         partition = data_loader.dataset.partition
 
-        full_preds = np.row_stack(full_preds)
+        # full_preds = np.row_stack(full_preds)
+        # full_labels = np.row_stack(full_labels)
+        # full_metas = np.row_stack(full_metas)
+        # print("full_preds:", full_preds.shape)
+        # print("full_labels:", full_labels.shape)
         for idx, emo_dim in enumerate(params.emo_dim_set):
             for i in range(len(full_preds)):
                 meta = full_metas[i]
@@ -414,6 +421,8 @@ def predict_quantile_regression(model, data_loader, params):
                 vid = meta[0, 0]
 
                 pred = full_preds[i]
+
+                # print("pred:", pred.shape)
 
                 pred_q0 = pred[:, 0]
                 pred_q1 = pred[:, 1]
@@ -429,6 +438,10 @@ def plot_video_prediction_with_quantiles(time, pred_q0, pred_q1, pred_q2, label_
 
     n = 100
     time = time[:n]
+    
+    pred_q0 = pred_q0[:n]
+    pred_q1 = pred_q1[:n]
+    pred_q2 = pred_q2[:n]
 
     # df_pred = df_pred[df_pred['segment_id'] > 0]  # remove padding
 
@@ -440,13 +453,14 @@ def plot_video_prediction_with_quantiles(time, pred_q0, pred_q1, pred_q2, label_
     label_target = label_raw
 
     plt.figure(figsize=(20, 10))
-    
-    plt.fill_between(time, pred_q0, pred_q2, color='lightblue', alpha=.5)
-    plt.plot(time, pred_q0, 'blue')
-    plt.plot(time, pred_q2, 'blue')
 
     plt.plot(time, label_target, 'red', label='target')
-    plt.plot(time, pred_q1, 'blue', label=f'prediction')
+    
+    plt.fill_between(time, pred_q0, pred_q2, color='lightblue', alpha=.5)
+    plt.plot(time, pred_q0, 'blue', label=r"$\tau=0.1$")
+    plt.plot(time, pred_q2, 'green', label=r"$\tau=0.9$")
+
+    plt.plot(time, pred_q1, 'orange', label=r"$\tau=0.5$")
 
     plt.title(f"{emo_dim} of video '{vid}' [{partition}]")
     plt.legend()
