@@ -22,7 +22,7 @@ def train_model(model, data_loader, params):
         criterion = utils.TiltedLoss()
     elif params.loss == 'tiltedCCC':
         criterion = utils.TiltedCCCLoss()
-    elif params.loss == 'cccStd':
+    elif params.loss == 'cwCCC':
         criterion = utils.CCCLossWithStd()
     else:
         raise Exception(f'Not supported loss "{params.loss}".')
@@ -47,14 +47,17 @@ def train_model(model, data_loader, params):
     for epoch in range(1, params.epochs + 1):
         
         ################################
-        train_loss = train(model, train_loader, criterion, optimizer, epoch, params)
-        # train_loss = train_with_std(model, train_loader, criterion, optimizer, epoch, params)
+        if params.uncertainty_approach == 'cw_ccc':
+            train_loss = train_with_std(model, train_loader, criterion, optimizer, epoch, params)
+        
+        else:
+            train_loss = train(model, train_loader, criterion, optimizer, epoch, params)
         ################################
-        
-        # val_loss, val_ccc, val_pcc, val_rmse = validate_std(model, val_loader, criterion, params)
-        
         if params.uncertainty_approach == "quantile_regression":
             val_loss, val_ccc, val_pcc, val_rmse = validate_quantile_regression(model, val_loader, criterion, params)
+        
+        elif params.uncertainty_approach == 'cw_ccc':
+            val_loss, val_ccc, val_pcc, val_rmse = validate_std(model, val_loader, criterion, params)
         
         else:
             val_loss, val_ccc, val_pcc, val_rmse = validate(model, val_loader, criterion, params)

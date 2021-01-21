@@ -15,6 +15,7 @@ import config
 
 import train
 
+import correlation_among_annotators
 
 # parse parameters
 def parse_params():
@@ -59,7 +60,7 @@ def parse_params():
                         help='dimension of output layer (default: 64)')
     parser.add_argument('--out_biases', type=float, nargs='+',
                         help='biases of output layer')
-    parser.add_argument('--loss', type=str, default='ccc', choices=['ccc', 'mse', 'l1', "tilted", "tilted_dyn", "tiltedCCC"],
+    parser.add_argument('--loss', type=str, default='ccc', choices=['ccc', 'mse', 'l1', "tilted", "tilted_dyn", "tiltedCCC", "cwCCC"],
                         help='loss function (default: ccc)')
     parser.add_argument('--loss_weights', nargs='+', type=float,
                         help='loss weights for total loss calculation')
@@ -129,7 +130,7 @@ def parse_params():
 
     
     # NOTE: choose uncertainty approach
-    parser.add_argument('--uncertainty_approach', type=str, choices=[None, 'quantile_regression', 'monte_carlo_dropout'])
+    parser.add_argument('--uncertainty_approach', type=str, choices=[None, 'quantile_regression', 'monte_carlo_dropout', 'cw_ccc'])
 
     # parse
     args = parser.parse_args()
@@ -155,18 +156,24 @@ def main(params):
     # load data
     print('Constructing dataset and data loader ...')
 
-    data = utils.load_data(params, params.feature_set, params.emo_dim_set, params.normalize, params.label_preproc,
-                           params.norm_opts, params.segment_type, params.win_len, params.hop_len, save=params.cache,
-                           refresh=params.refresh, add_seg_id=params.add_seg_id, annotator=params.annotator)
-    data_loader = get_dataloaders(data)
-    if params.annotator is not None:
-        data_gt = utils.load_data(params, params.feature_set, params.emo_dim_set, params.normalize, params.label_preproc,
-                                  params.norm_opts, 'None', params.win_len, params.hop_len, save=params.cache,
-                                  refresh=params.refresh, add_seg_id=params.add_seg_id, annotator=None)
-        data_loader_gt = get_dataloaders(data_gt, True)
-        print('-' * 50)
+    ########################################
+    if params.uncertainty_approach == 'cw_ccc':
+        data_loader, data_loader_gt, data = correlation_among_annotators.get_correlations_data_loader(params)
+    
     else:
-        data_loader_gt = None
+        data = utils.load_data(params, params.feature_set, params.emo_dim_set, params.normalize, params.label_preproc,
+                            params.norm_opts, params.segment_type, params.win_len, params.hop_len, save=params.cache,
+                            refresh=params.refresh, add_seg_id=params.add_seg_id, annotator=params.annotator)
+        data_loader = get_dataloaders(data)
+        if params.annotator is not None:
+            data_gt = utils.load_data(params, params.feature_set, params.emo_dim_set, params.normalize, params.label_preproc,
+                                    params.norm_opts, 'None', params.win_len, params.hop_len, save=params.cache,
+                                    refresh=params.refresh, add_seg_id=params.add_seg_id, annotator=None)
+            data_loader_gt = get_dataloaders(data_gt, True)
+            print('-' * 50)
+        else:
+            data_loader_gt = None
+    ########################################
 
     # check params
     if params.out_biases is None:
@@ -213,7 +220,7 @@ def main(params):
             train_model(model, data_loader, params)
         
         ########################################
-        if params.uncertainty_approach == None:
+        if params.uncertainty_approach == None or params.uncertainty_approach == 'cw_ccc':
             test_ccc, test_pcc, test_rmse = evaluate(model, data_loader['test'], params)
         
         elif params.uncertainty_approach == "quantile_regression":
@@ -275,7 +282,7 @@ def main(params):
         best_model = torch.load(best_model_files[best_idx])
         
         ########################################
-        if params.uncertainty_approach == None:
+        if params.uncertainty_approach == None or params.uncertainty_approach == 'cw_ccc':
             predict(best_model, data_loader['test'], params)
         
         elif params.uncertainty_approach == "quantile_regression":
