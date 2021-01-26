@@ -1,0 +1,18 @@
+/nas/student/NicolasKolbenschlag/emotion_uncertainty/MuSe-LSTM-Attention-baseline-model/extract_features/emotion_recognition/main.py --feature_set bert-4 --emo_dim_set valence --epochs 100 --refresh --n_seeds 1 --seed 314 --attn --rnn_bi --loss tilted --uncertainty_approach quantile_regression --predict
+Constructing dataset and data loader ...
+Constructing data from scratch ...
+Samples in partitions: (3122, 62, 64)
+Input feature dim: 768.
+==================================================
+Training model... [seed 314]
+Note: target can not be optimized for 15 consecutive epochs, early stop the training process!
+Seed 314 | Best [Val CCC]: 0.3465 [' 0.3465']| Loss: 0.0990 | PCC: 0.3894 ['0.3894'] | RMSE: 0.3872 ['0.3872']
+On Test: CCC  0.4648 | PCC  0.5210 | RMSE  0.3775
+==================================================
+On ground-truth labels:	Best	[Val CCC] for seed "314":	 0.3465
+On ground-truth labels:		[Test CCC] for seed "314":	 0.4648
+----------------------------------------------------------------------------------------------------
+Predict val & test videos...
+...done.
+Delete model "MuSe-LSTM-Attention-baseline-model/output/model/2021-01-25-15-25_[bert-4]_[valence]_[NOSEG]_[lstm_64_1_True]_[True_1_4]_[0.005_1024_0.0_0.0_0.0]_None_[1_314_None_None].pth".
+slurmstepd: Exceeded step memory limit at some point.

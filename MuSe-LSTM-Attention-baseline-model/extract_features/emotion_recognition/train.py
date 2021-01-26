@@ -465,10 +465,10 @@ def plot_video_prediction_with_quantiles(time, pred_q0, pred_q1, pred_q2, label_
 
     plt.plot(time, pred_q1, 'orange', label=r"$\tau=0.5$")
 
-    plt.title(f"{emo_dim} of video '{vid}' [{partition}]")
-    plt.legend()
-    plt.xlabel('time (s)')
-    plt.ylabel(emo_dim)
+    plt.title(f"{emo_dim} of video '{vid}' [{partition}]", fontsize=24)
+    plt.legend(prop={"size": 24})
+    plt.xlabel('time (s)', fontsize=24)
+    plt.ylabel(emo_dim, fontsize=24)
 
     ax = plt.gca()
     if time[-1] < 400:
@@ -508,7 +508,7 @@ def evaluate_mc_dropout(model, test_loader, params):
 
 def predict_mc_dropout(model, data_loader, params):
     model.train()
-    n_ensembles = 10
+    n_ensembles = 4
 
     full_preds, full_metas, full_labels = [], [], []
     with torch.no_grad():
@@ -590,10 +590,10 @@ def plot_video_prediction_with_uncertainty(time, pred_mean, pred_var, label_raw,
     plt.plot(time, label_target, 'red', label='target')
     plt.plot(time, pred_mean, 'blue', label=f'prediction')
 
-    plt.title(f"{emo_dim} of video '{vid}' [{partition}]")
-    plt.legend(prop={"size": 10})
-    plt.xlabel('time', fontsize=16)
-    plt.ylabel(emo_dim, fontsize=16)
+    plt.title(f"{emo_dim} of video '{vid}' [{partition}]", fontsize=24)
+    plt.legend(prop={"size": 24})
+    plt.xlabel('time', fontsize=24)
+    plt.ylabel(emo_dim, fontsize=24)
 
     ax = plt.gca()
     if time[-1] < 400:
