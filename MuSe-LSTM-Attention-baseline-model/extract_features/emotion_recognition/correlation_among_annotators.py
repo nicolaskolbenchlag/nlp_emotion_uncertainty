@@ -79,7 +79,7 @@ def get_correlations_data_loader(params):
 
 
     data = utils.load_data(params, params.feature_set, params.emo_dim_set, params.normalize, params.label_preproc, params.norm_opts, params.segment_type, params.win_len, params.hop_len, save=params.cache, refresh=params.refresh, add_seg_id=params.add_seg_id, annotator=None)
-    data_loader = get_dataloaders(data, ccs)
+    data_loader = get_dataloaders(params, data, ccs)
 
     data_loader_gt = None
 
